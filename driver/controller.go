@@ -82,20 +82,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 
 	// Volume Create
-	//properties := map[string]string{"cinder.csi.openstack.org/cluster": cs.Driver.cluster}
 	content := req.GetVolumeContentSource()
 	var snapshotID string
-	//var sourceVolID string
 
 	if content != nil && content.GetSnapshot() != nil {
 		snapshotID = content.GetSnapshot().GetSnapshotId()
 	}
 
-	//if content != nil && content.GetVolume() != nil {
-	//	sourceVolID = content.GetVolume().GetVolumeId()
-	//}
 
-	//vol, err := cloud.CreateVolume(volName, volSizeGB, volType, volAvailability, snapshotID, sourcevolID, &properties)
 	vcr := gobizfly.VolumeCreateRequest{
 		Name: volName,
 		Size: volSizeGB,
@@ -116,6 +110,28 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 }
 
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+	// Volume Delete
+	volID := req.GetVolumeId()
+	if len(volID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "DeleteVolume Volume ID must be provided")
+	}
+	err := cs.Client.Volume.Delete(ctx, volID)
+	if err != nil {
+		if cpoerrors.IsNotFound(err) {
+			klog.V(3).Infof("Volume %s is already deleted.", volID)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+		klog.V(3).Infof("Failed to DeleteVolume: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("DeleteVolume failed with error %v", err))
+	}
+
+	klog.V(4).Infof("Delete volume %s", volID)
+
+	return &csi.DeleteVolumeResponse{}, nil
+}
+
+func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+
 	return nil, nil
 }
 
@@ -124,7 +140,25 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 }
 
 func (cs *controllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	return nil, nil
+	vlist, err := cs.Client.Volume.List(ctx, &gobizfly.ListOptions{})
+	if err != nil {
+		klog.V(3).Infof("Failed to ListVolumes: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ListVolumes failed with error %v", err))
+	}
+
+	var ventries []*csi.ListVolumesResponse_Entry
+	for _, v := range vlist {
+		ventry := csi.ListVolumesResponse_Entry{
+			Volume: &csi.Volume{
+				VolumeId:      v.ID,
+				CapacityBytes: int64(v.Size * 1024 * 1024 * 1024),
+			},
+		}
+		ventries = append(ventries, &ventry)
+	}
+	return &csi.ListVolumesResponse{
+		Entries: ventries,
+	}, nil
 }
 
 func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
@@ -144,26 +178,62 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 // ControllerGetCapabilities implements the default GRPC callout.
 // Default supports all capabilities
 func (cs *controllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	return nil, nil
+	klog.V(5).Infof("Using default ControllerGetCapabilities")
+
+	return &csi.ControllerGetCapabilitiesResponse{
+		Capabilities: cs.Driver.cscap,
+	}, nil
 }
 
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	reqVolCap := req.GetVolumeCapabilities()
 
-	return nil, nil
+	if reqVolCap == nil || len(reqVolCap) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "ValidateVolumeCapabilities Volume Capabilities must be provided")
+	}
+	volumeID := req.GetVolumeId()
+
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "ValidateVolumeCapabilities Volume ID must be provided")
+	}
+
+	_, err := cs.Client.Volume.get(ctx, volumeID)
+	if err != nil {
+		if cpoerrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, fmt.Sprintf("ValidateVolumeCapabiltites Volume %s not found", volumeID))
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ValidateVolumeCapabiltites %v", err))
+	}
+
+	for _, cap := range reqVolCap {
+		if cap.GetAccessMode().GetMode() != cs.Driver.vcap[0].Mode {
+			return &csi.ValidateVolumeCapabilitiesResponse{Message: "Requested Volume Capabilty not supported"}, nil
+		}
+	}
+
+	// Cinder CSI driver currently supports one mode only
+	resp := &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeCapabilities: []*csi.VolumeCapability{
+				{
+					AccessMode: cs.Driver.vcap[0],
+				},
+			},
+		},
+	}
+
+	return resp, nil
 }
 
 func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	return nil, nil
+	return nil, status.Error(codes.Unimplemented, fmt.Sprintf("GetCapacity is not yet implemented"))
 }
 
 func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	return nil, nil
 }
 
-func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 
-	return nil, nil
-}
 
 // func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 // 	for _, topology := range requirement.GetPreferred() {

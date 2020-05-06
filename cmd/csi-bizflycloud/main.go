@@ -20,11 +20,11 @@ import (
 )
 
 var (
-	endpoint    string
-	nodeID      string
-	username	string
-	password	string
-	cluster     string
+	endpoint string
+	nodeID   string
+	username string
+	password string
+	cluster  string
 )
 
 func init() {
@@ -109,16 +109,15 @@ func handle() {
 	// Initiliaze client
 	// openstack.InitOpenStackProvider(cloudconfig)
 	// cloud, err := openstack.GetOpenStackProvider()
-	
+
 	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username))
-	
+
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancelFunc()
 
 	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{Username: username, Password: password})
 
 	client.SetKeystoneToken(tok.KeystoneToken)
-	
 
 	if err != nil {
 		klog.Warningf("Failed to GetOpenStackProvider: %v", err)

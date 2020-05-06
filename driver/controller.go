@@ -1,33 +1,21 @@
-
 package driver
 
 import (
-	// "fmt"
-
-	// "github.com/golang/protobuf/ptypes"
-
 	"fmt"
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/cloud-provider-openstack/pkg/volume/util"
-	"k8s.io/klog"
 
-	// "github.com/gophercloud/gophercloud/openstack/blockstorage/v3/snapshots"
-	// ossnapshots "github.com/gophercloud/gophercloud/openstack/blockstorage/v3/snapshots"
-	// "github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
+	"github.com/bizflycloud/gobizfly"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	// "k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
 	cpoerrors "k8s.io/cloud-provider-openstack/pkg/util/errors"
-	// "k8s.io/cloud-provider-openstack/pkg/volume/util"
-	"github.com/bizflycloud/gobizfly"
-
-	// "k8s.io/klog"
+	"k8s.io/cloud-provider-openstack/pkg/volume/util"
+	"k8s.io/klog"
 )
 
 type controllerServer struct {
 	Driver *VolumeDriver
-	Client	*gobizfly.Client
+	Client *gobizfly.Client
 }
 
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -75,11 +63,10 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		if volSizeGB != volume.Size {
 			return nil, status.Error(codes.AlreadyExists, "Volume Already exists with same name and different capacity")
 		}
-	
+
 		klog.V(4).Infof("Volume %s already exists in Availability Zone: %s of size %d GiB", volume.ID, volume.AvailabilityZone, volume.Size)
 		return getCreateVolumeResponse(volume), nil
 	}
-
 
 	// Volume Create
 	content := req.GetVolumeContentSource()
@@ -89,13 +76,12 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		snapshotID = content.GetSnapshot().GetSnapshotId()
 	}
 
-
 	vcr := gobizfly.VolumeCreateRequest{
-		Name: volName,
-		Size: volSizeGB,
-		VolumeType: volType,
+		Name:             volName,
+		Size:             volSizeGB,
+		VolumeType:       volType,
 		AvailabilityZone: volAvailability,
-		SnapshotID: snapshotID,
+		SnapshotID:       snapshotID,
 	}
 	vol, err := cs.Client.Volume.Create(ctx, &vcr)
 	if err != nil {
@@ -323,8 +309,6 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	return nil, nil
 }
-
-
 
 func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 	for _, topology := range requirement.GetPreferred() {

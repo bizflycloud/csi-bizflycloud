@@ -2,11 +2,8 @@ package driver
 
 import (
 	"fmt"
-	//"k8s.io/cloud-provider-openstack/pkg/util/blockdevice"
-	//"k8s.io/kubernetes/pkg/util/resizefs"
 	"os"
 	"path/filepath"
-	//"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -15,11 +12,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"k8s.io/klog"
-	// "k8s.io/kubernetes/pkg/util/resizefs"
 	utilpath "k8s.io/utils/path"
-
 	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
-	// "k8s.io/cloud-provider-openstack/pkg/util/blockdevice"
 	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"github.com/bizflycloud/gobizfly"

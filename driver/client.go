@@ -10,18 +10,16 @@ import (
 )
 
 const (
-	volumeAvailableStatus = "available"
 	volumeInUseStatus     = "in-use"
-	volumeDeletedStatus   = "deleted"
-	volumeErrorStatus     = "error"
 
-	diskAttachInitDelay      = 1 * time.Second
-	diskAttachFactor         = 1.2
-	diskAttachSteps          = 15
-	diskDetachInitDelay      = 1 * time.Second
-	diskDetachFactor         = 1.2
-	diskDetachSteps          = 13
+	diskAttachInitDelay = 1 * time.Second
+	diskAttachFactor    = 1.2
+	diskAttachSteps     = 15
+	diskDetachInitDelay = 1 * time.Second
+	diskDetachFactor    = 1.2
+	diskDetachSteps     = 13
 )
+
 // GetVolumesByName gets volumes by name of volume
 func GetVolumesByName(ctx context.Context, client *gobizfly.Client, name string) (*gobizfly.Volume, error) {
 	volumes, err := client.Volume.List(ctx, &gobizfly.ListOptions{})
@@ -111,4 +109,3 @@ func diskIsAttached(ctx context.Context, client *gobizfly.Client, serverId strin
 
 	return false, nil
 }
-

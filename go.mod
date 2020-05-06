@@ -52,7 +52,7 @@ require (
 	github.com/bizflycloud/gobizfly v0.0.0-20200505134625-35f6dd346663
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/protobuf v1.3.2
-	github.com/gophercloud/gophercloud v0.10.1-0.20200423022346-456b0b69b115
+	github.com/gophercloud/gophercloud v0.7.1-0.20200116010453-5391bb776e58
 	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
 	golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3 // indirect
 	google.golang.org/grpc v1.26.0

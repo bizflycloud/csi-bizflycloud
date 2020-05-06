@@ -49,14 +49,16 @@ replace k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.18.2
 replace k8s.io/sample-controller => k8s.io/sample-controller v0.18.2
 
 require (
-	github.com/bizflycloud/gobizfly v0.0.0-20200420071842-6c151195cdf4
+	github.com/bizflycloud/gobizfly v0.0.0-20200505134625-35f6dd346663
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/protobuf v1.3.2
-	github.com/gophercloud/gophercloud v0.7.1-0.20200116010453-5391bb776e58
+	github.com/gophercloud/gophercloud v0.10.1-0.20200423022346-456b0b69b115
 	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
+	golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3 // indirect
 	google.golang.org/grpc v1.26.0
+	k8s.io/apimachinery v0.18.2
 	k8s.io/cloud-provider-openstack v1.18.0
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.18.2
-	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
+	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66
 )

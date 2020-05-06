@@ -26,7 +26,6 @@ type VolumeDriver struct {
 	nodeID      string
 	version     string
 	endpoint    string
-	cloudconfig string
 	cluster     string
 
 	ids *identityServer
@@ -54,18 +53,18 @@ func NewDriver(nodeID, endpoint, cluster string) *VolumeDriver {
 			csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 			csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
-			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-			csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
-			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
-			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+			//csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+			//csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
+			//csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+			//csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 		})
 	d.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
 	d.AddNodeServiceCapabilities(
 		[]csi.NodeServiceCapability_RPC_Type{
 			csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
-			csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
-			csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+			//csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+			//csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 		})
 
 	return d

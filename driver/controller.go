@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	// "k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
-	// cpoerrors "k8s.io/cloud-provider-openstack/pkg/util/errors"
+	cpoerrors "k8s.io/cloud-provider-openstack/pkg/util/errors"
 	// "k8s.io/cloud-provider-openstack/pkg/volume/util"
 	"github.com/bizflycloud/gobizfly"
 
@@ -71,13 +71,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// if volume {
-	if volume {
+	if volume != nil {
 		if volSizeGB != volume.Size {
 			return nil, status.Error(codes.AlreadyExists, "Volume Already exists with same name and different capacity")
 		}
 	
 		klog.V(4).Infof("Volume %s already exists in Availability Zone: %s of size %d GiB", volume.ID, volume.AvailabilityZone, volume.Size)
-		return getCreateVolumeResponse(&volume), nil	
+		return getCreateVolumeResponse(volume), nil
 	}
 
 
@@ -131,12 +131,103 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 }
 
 func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+	// Volume Attach
+	instanceID := req.GetNodeId()
+	volumeID := req.GetVolumeId()
 
-	return nil, nil
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "ControllerPublishVolume Volume ID must be provided")
+	}
+
+	if len(instanceID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "ControllerPublishVolume Instance ID must be provided")
+	}
+
+	_, err := cs.Client.Volume.Get(ctx, volumeID)
+	if err != nil {
+		if cpoerrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "ControllerPublishVolume Volume not found")
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume get volume failed with error %v", err))
+	}
+
+	_, err = cs.Client.Server.Get(ctx, instanceID)
+	if err != nil {
+		if cpoerrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "ControllerPublishVolume Instance not found")
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume GetInstanceByID failed with error %v", err))
+	}
+
+	_, err = cs.Client.Volume.Attach(ctx, volumeID, instanceID)
+	if err != nil {
+		klog.V(3).Infof("Failed to AttachVolume: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume Attach Volume failed with error %v", err))
+
+	}
+	err = WaitDiskAttached(ctx, cs.Client, instanceID, volumeID)
+	if err != nil {
+		klog.V(3).Infof("Failed to WaitDiskAttached: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
+	}
+	devicePath, err := GetAttachmentDiskPath(ctx, cs.Client, instanceID, volumeID)
+	if err != nil {
+		klog.V(3).Infof("Failed to GetAttachmentDiskPath: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
+	}
+
+	klog.V(4).Infof("ControllerPublishVolume %s on %s", volumeID, instanceID)
+
+	// Publish Volume Info
+	pvInfo := map[string]string{}
+	pvInfo["DevicePath"] = devicePath
+
+	return &csi.ControllerPublishVolumeResponse{
+		PublishContext: pvInfo,
+	}, nil
 }
 
 func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	return nil, nil
+	// Volume Detach
+	instanceID := req.GetNodeId()
+	volumeID := req.GetVolumeId()
+
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "ControllerUnpublishVolume Volume ID must be provided")
+	}
+	_, err := cs.Client.Server.Get(ctx, instanceID)
+	if err != nil {
+		// TODO: Check server not found
+		//if cpoerrors.IsNotFound(err) {
+		//	klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because node %s does not exist", volumeID, instanceID)
+		//	return &csi.ControllerUnpublishVolumeResponse{}, nil
+		//}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerUnpublishVolume GetInstanceByID failed with error %v", err))
+	}
+
+	_, err = cs.Client.Volume.Detach(ctx, volumeID, instanceID)
+	if err != nil {
+		if cpoerrors.IsNotFound(err) {
+			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because it does not exist", volumeID)
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+		klog.V(3).Infof("Failed to DetachVolume: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerUnpublishVolume Detach Volume failed with error %v", err))
+	}
+
+	err = WaitDiskDetached(ctx, cs.Client, instanceID, volumeID)
+	if err != nil {
+		klog.V(3).Infof("Failed to WaitDiskDetached: %v", err)
+		if cpoerrors.IsNotFound(err) {
+			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because it was deleted in the meanwhile", volumeID)
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerUnpublishVolume failed with error %v", err))
+	}
+
+	klog.V(4).Infof("ControllerUnpublishVolume %s on %s", volumeID, instanceID)
+
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
 func (cs *controllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
@@ -197,7 +288,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "ValidateVolumeCapabilities Volume ID must be provided")
 	}
 
-	_, err := cs.Client.Volume.get(ctx, volumeID)
+	_, err := cs.Client.Volume.Get(ctx, volumeID)
 	if err != nil {
 		if cpoerrors.IsNotFound(err) {
 			return nil, status.Error(codes.NotFound, fmt.Sprintf("ValidateVolumeCapabiltites Volume %s not found", volumeID))
@@ -235,60 +326,50 @@ func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 
 
-// func getAZFromTopology(requirement *csi.TopologyRequirement) string {
-// 	for _, topology := range requirement.GetPreferred() {
-// 		zone, exists := topology.GetSegments()[topologyKey]
-// 		if exists {
-// 			return zone
-// 		}
-// 	}
+func getAZFromTopology(requirement *csi.TopologyRequirement) string {
+	for _, topology := range requirement.GetPreferred() {
+		zone, exists := topology.GetSegments()[topologyKey]
+		if exists {
+			return zone
+		}
+	}
 
-// 	for _, topology := range requirement.GetRequisite() {
-// 		zone, exists := topology.GetSegments()[topologyKey]
-// 		if exists {
-// 			return zone
-// 		}
-// 	}
-// 	return ""
-// }
+	for _, topology := range requirement.GetRequisite() {
+		zone, exists := topology.GetSegments()[topologyKey]
+		if exists {
+			return zone
+		}
+	}
+	return ""
+}
 
-// func getCreateVolumeResponse(vol *volumes.Volume) *csi.CreateVolumeResponse {
+func getCreateVolumeResponse(vol *gobizfly.Volume) *csi.CreateVolumeResponse {
 
-// 	var volsrc *csi.VolumeContentSource
+	var volsrc *csi.VolumeContentSource
 
-// 	if vol.SnapshotID != "" {
-// 		volsrc = &csi.VolumeContentSource{
-// 			Type: &csi.VolumeContentSource_Snapshot{
-// 				Snapshot: &csi.VolumeContentSource_SnapshotSource{
-// 					SnapshotId: vol.SnapshotID,
-// 				},
-// 			},
-// 		}
-// 	}
+	if vol.SnapshotID != "" {
+		volsrc = &csi.VolumeContentSource{
+			Type: &csi.VolumeContentSource_Snapshot{
+				Snapshot: &csi.VolumeContentSource_SnapshotSource{
+					SnapshotId: vol.SnapshotID,
+				},
+			},
+		}
+	}
 
-// 	if vol.SourceVolID != "" {
-// 		volsrc = &csi.VolumeContentSource{
-// 			Type: &csi.VolumeContentSource_Volume{
-// 				Volume: &csi.VolumeContentSource_VolumeSource{
-// 					VolumeId: vol.SourceVolID,
-// 				},
-// 			},
-// 		}
-// 	}
+	resp := &csi.CreateVolumeResponse{
+		Volume: &csi.Volume{
+			VolumeId:      vol.ID,
+			CapacityBytes: int64(vol.Size * 1024 * 1024 * 1024),
+			AccessibleTopology: []*csi.Topology{
+				{
+					Segments: map[string]string{topologyKey: vol.AvailabilityZone},
+				},
+			},
+			ContentSource: volsrc,
+		},
+	}
 
-// 	resp := &csi.CreateVolumeResponse{
-// 		Volume: &csi.Volume{
-// 			VolumeId:      vol.ID,
-// 			CapacityBytes: int64(vol.Size * 1024 * 1024 * 1024),
-// 			AccessibleTopology: []*csi.Topology{
-// 				{
-// 					Segments: map[string]string{topologyKey: vol.AvailabilityZone},
-// 				},
-// 			},
-// 			ContentSource: volsrc,
-// 		},
-// 	}
+	return resp
 
-// 	return resp
-
-// }
+}

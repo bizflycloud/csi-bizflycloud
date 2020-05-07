@@ -81,7 +81,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: bizflycloud-csi-plugin
-          image: docker.io/k8scloudprovider/bizflycloud-csi-plugin:latest
+          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:latest
           args :
             - /bin/bizflycloud-csi-plugin
             - "--nodeid=$(NODE_ID)"

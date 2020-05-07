@@ -39,6 +39,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Volume Type
 	volType := req.GetParameters()["type"]
+	volCategory := req.GetParameters()["category"]
 
 	var volAvailability string
 	if req.GetAccessibilityRequirements() != nil {
@@ -82,6 +83,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		VolumeType:       volType,
 		AvailabilityZone: volAvailability,
 		SnapshotID:       snapshotID,
+		VolumeCategory:   volCategory,
 	}
 	vol, err := cs.Client.Volume.Create(ctx, &vcr)
 	if err != nil {

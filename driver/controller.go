@@ -99,11 +99,18 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	// Volume Delete
-	volID := req.GetVolumeId()
+	volID := req.GetVolumeId() // Volume name
 	if len(volID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "DeleteVolume Volume ID must be provided")
 	}
-	err := cs.Client.Volume.Delete(ctx, volID)
+
+	vol, err := GetVolumesByName(ctx, cs.Client, volID)
+	if err != nil {
+		klog.V(3).Info("Failed to get volume %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("DeleteVolume failed with error %v", err))
+	}
+
+	err = cs.Client.Volume.Delete(ctx, vol.ID)
 	if err != nil {
 		if cpoerrors.IsNotFound(err) {
 			klog.V(3).Infof("Volume %s is already deleted.", volID)

@@ -58,32 +58,33 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
-        - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v1.2.2
-          args:
-            - "--csi-address=$(ADDRESS)"
-          env:
-            - name: ADDRESS
-              value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          imagePullPolicy: Always
-          volumeMounts:
-            - mountPath: /var/lib/csi/sockets/pluginproxy/
-              name: socket-dir
-        - name: csi-resizer
-          image: quay.io/k8scsi/csi-resizer:v0.4.0
-          args:
-            - "--csi-address=$(ADDRESS)"
-          env:
-            - name: ADDRESS
-              value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /var/lib/csi/sockets/pluginproxy/
+# Enable this when the driver avaiable
+#        - name: csi-snapshotter
+#          image: quay.io/k8scsi/csi-snapshotter:v1.2.2
+#          args:
+#            - "--csi-address=$(ADDRESS)"
+#          env:
+#            - name: ADDRESS
+#              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+#          imagePullPolicy: Always
+#          volumeMounts:
+#            - mountPath: /var/lib/csi/sockets/pluginproxy/
+#              name: socket-dir
+#        - name: csi-resizer
+#          image: quay.io/k8scsi/csi-resizer:v0.4.0
+#          args:
+#            - "--csi-address=$(ADDRESS)"
+#          env:
+#            - name: ADDRESS
+#              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+#          imagePullPolicy: "IfNotPresent"
+#          volumeMounts:
+#            - name: socket-dir
+#              mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: bizflycloud-csi-plugin
           image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:latest
           args :
-            - /bin/bizflycloud-csi-plugin
+            - /bin/csi-bizflycloud
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--cluster=$(CLUSTER_NAME)"
@@ -102,7 +103,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: bizflycloud
-                  key: email
+                  key: email_address
             - name: BIZFLYCLOUD_PASSWORD
               valueFrom:
                 secretKeyRef:

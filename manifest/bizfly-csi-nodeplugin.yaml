@@ -50,7 +50,7 @@ spec:
             allowPrivilegeEscalation: true
           image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:latest
           args :
-            - /bin/bizflycloud-csi-plugin
+            - /bin/csi-bizflycloud
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--username=$(BIZFLYCLOUD_EMAIL)"
@@ -66,7 +66,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: bizflycloud
-                  key: email
+                  key: email_address
             - name: BIZFLYCLOUD_PASSWORD
               valueFrom:
                 secretKeyRef:

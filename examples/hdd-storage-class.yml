@@ -1,0 +1,9 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hdd-hn1
+provisioner: volume.csi.bizflycloud.vn
+parameters:
+  type: HDD
+  availability: HN1
+  category: premium

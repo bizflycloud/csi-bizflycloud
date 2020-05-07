@@ -25,6 +25,7 @@ var (
 	username string
 	password string
 	cluster  string
+	api_url	 string
 )
 
 func init() {
@@ -69,11 +70,13 @@ func main() {
 	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
 	cmd.MarkPersistentFlagRequired("endpoint")
 
-	cmd.PersistentFlags().StringVar(&username, "username", "", "BizFlyCloud username")
+	cmd.PersistentFlags().StringVar(&username, "username", "", "BizFly Cloud username")
 	cmd.MarkPersistentFlagRequired("username")
 
-	cmd.PersistentFlags().StringVar(&password, "password", "", "BizFlyCloud password")
+	cmd.PersistentFlags().StringVar(&password, "password", "", "BizFly Cloud password")
 	cmd.MarkPersistentFlagRequired("password")
+
+	cmd.PersistentFlags().StringVar(&api_url, "api_url", "https://manage.bizflycloud.vn", "BizFly Cloud API URL")
 
 	cmd.PersistentFlags().StringVar(&cluster, "cluster", "", "The identifier of the cluster that the plugin is running in.")
 
@@ -106,11 +109,7 @@ func handle() {
 		klog.V(3).Infof("Failed to GetMetadataProvider: %v", err)
 	}
 
-	// Initiliaze client
-	// openstack.InitOpenStackProvider(cloudconfig)
-	// cloud, err := openstack.GetOpenStackProvider()
-
-	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username))
+	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(api_url))
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancelFunc()

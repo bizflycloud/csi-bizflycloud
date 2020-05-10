@@ -9,7 +9,7 @@ RUN cd /app && GO111MODULE=on GOARCH=amd64 go build -o csi-bizflycloud cmd/csi-b
 
 FROM amd64/alpine:3.11
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates e2fsprogs xfsprogs udev
 
 COPY --from=build-env /app/csi-bizflycloud /bin/
 

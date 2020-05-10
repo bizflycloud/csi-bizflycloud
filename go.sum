@@ -65,6 +65,8 @@ github.com/bizflycloud/gobizfly v0.0.0-20200505134625-35f6dd346663 h1:eyT8wSDA1s
 github.com/bizflycloud/gobizfly v0.0.0-20200505134625-35f6dd346663/go.mod h1:dESSbBmjQ5OJBgRPCTgmxAeqxNnRzXIZuRK3CTW2DUs=
 github.com/bizflycloud/gobizfly v0.0.0-20200507104617-a197aac71dd9 h1:W5KdUykvF1+GIpEL9luZq2VLr9JNbYUeYbT6HcHr8lE=
 github.com/bizflycloud/gobizfly v0.0.0-20200507104617-a197aac71dd9/go.mod h1:dESSbBmjQ5OJBgRPCTgmxAeqxNnRzXIZuRK3CTW2DUs=
+github.com/bizflycloud/gobizfly v0.0.0-20200510160435-d9691f75cf8e h1:yT2F/kSQ8UEptWuZkWpWzKtMSO3ekpg7vga4w7CEU3I=
+github.com/bizflycloud/gobizfly v0.0.0-20200510160435-d9691f75cf8e/go.mod h1:2otUgZd6PrKezjMrdAw9gy7byEXMrigX9Sm4ujCaFuk=
 github.com/blang/semver v3.5.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
 github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBTaaSFSlLx/70C2HPIMNZpVV8+vt/A+FMnYP11g=

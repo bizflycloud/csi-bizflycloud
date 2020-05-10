@@ -49,7 +49,7 @@ replace k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.18.2
 replace k8s.io/sample-controller => k8s.io/sample-controller v0.18.2
 
 require (
-	github.com/bizflycloud/gobizfly v0.0.0-20200507104617-a197aac71dd9
+	github.com/bizflycloud/gobizfly v0.0.0-20200510160435-d9691f75cf8e
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/protobuf v1.4.1
 	github.com/gophercloud/gophercloud v0.7.1-0.20200116010453-5391bb776e58

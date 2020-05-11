@@ -140,12 +140,17 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume get volume failed with error %v", err))
 	}
 
-	_, err = cs.Client.Server.Get(ctx, instanceID)
+	svr, err := cs.Client.Server.Get(ctx, instanceID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "ControllerPublishVolume Instance not found")
 		}
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume GetInstanceByID failed with error %v", err))
+	}
+
+	// Check volume is already attached
+	if volumeInServer(volumeID, svr.AttachedVolumes){
+		goto publishVolume
 	}
 
 	_, err = cs.Client.Volume.Attach(ctx, volumeID, instanceID)
@@ -159,22 +164,24 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		klog.V(3).Infof("Failed to WaitDiskAttached: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
 	}
-	devicePath, err := GetAttachmentDiskPath(ctx, cs.Client, instanceID, volumeID)
-	if err != nil {
-		klog.V(3).Infof("Failed to GetAttachmentDiskPath: %v", err)
-		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
-	}
+	publishVolume:
+		devicePath, err := GetAttachmentDiskPath(ctx, cs.Client, instanceID, volumeID)
+		if err != nil {
+			klog.V(3).Infof("Failed to GetAttachmentDiskPath: %v", err)
+			return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
+		}
 
-	klog.V(4).Infof("ControllerPublishVolume %s on %s", volumeID, instanceID)
+		klog.V(4).Infof("ControllerPublishVolume %s on %s", volumeID, instanceID)
 
-	// Publish Volume Info
-	pvInfo := map[string]string{}
-	pvInfo["DevicePath"] = devicePath
+		// Publish Volume Info
+		pvInfo := map[string]string{}
+		pvInfo["DevicePath"] = devicePath
 
-	return &csi.ControllerPublishVolumeResponse{
-		PublishContext: pvInfo,
-	}, nil
+		return &csi.ControllerPublishVolumeResponse{
+			PublishContext: pvInfo,
+		}, nil
 }
+
 
 func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	// Volume Detach
@@ -184,7 +191,7 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "ControllerUnpublishVolume Volume ID must be provided")
 	}
-	_, err := cs.Client.Server.Get(ctx, instanceID)
+	server, err := cs.Client.Server.Get(ctx, instanceID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because node %s does not exist", volumeID, instanceID)
@@ -193,14 +200,15 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerUnpublishVolume GetInstanceByID failed with error %v", err))
 	}
 
+	if !volumeInServer(volumeID, server.AttachedVolumes) {
+		klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached", volumeID)
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
+	}
+
 	_, err = cs.Client.Volume.Detach(ctx, volumeID, instanceID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because it does not exist", volumeID)
-			return &csi.ControllerUnpublishVolumeResponse{}, nil
-		}
-		if errors.Is(err, gobizfly.ErrVolumeAlreadyDetached) {
-			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached", volumeID)
 			return &csi.ControllerUnpublishVolumeResponse{}, nil
 		}
 		klog.V(3).Infof("Failed to DetachVolume: %v", err)
@@ -362,4 +370,13 @@ func getCreateVolumeResponse(vol *gobizfly.Volume) *csi.CreateVolumeResponse {
 
 	return resp
 
+}
+
+func volumeInServer(volId string, attachedVolumes []gobizfly.AttachedVolume) bool {
+	for _, a := range attachedVolumes {
+		if a.ID == volId {
+			return true
+		}
+	}
+	return false
 }

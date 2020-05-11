@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-FROM golang:alpine3.11  AS build-env
+FROM golang:1.14-stretch  AS build-env
 WORKDIR /app
 ADD . /app
 RUN cd /app && GO111MODULE=on GOARCH=amd64 go build -o csi-bizflycloud cmd/csi-bizflycloud/main.go
 
-FROM amd64/alpine:3.11
+FROM k8s.gcr.io/debian-base-amd64:1.0.0
 
-RUN apk add --no-cache ca-certificates e2fsprogs xfsprogs udev
+RUN clean-install ca-certificates e2fsprogs mount xfsprogs udev
 
 COPY --from=build-env /app/csi-bizflycloud /bin/
 

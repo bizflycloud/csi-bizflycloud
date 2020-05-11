@@ -11,6 +11,7 @@ import (
 
 const (
 	volumeInUseStatus     = "in-use"
+	snapshotAvailableStatus = "available"
 
 	diskAttachInitDelay = 1 * time.Second
 	diskAttachFactor    = 1.2
@@ -108,4 +109,43 @@ func diskIsAttached(ctx context.Context, client *gobizfly.Client, serverId strin
 	}
 
 	return false, nil
+}
+
+func GetSnapshotByNameAndVolumeID(ctx context.Context, client *gobizfly.Client, volumeId string, name string) ([]*gobizfly.Snapshot, error){
+	snapshots, err := client.Snapshot.List(ctx, &gobizfly.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var snaps []*gobizfly.Snapshot
+	for _, s := range snapshots {
+		if s.VolumeId == volumeId && s.Name == name {
+			snaps = append(snaps, s)
+		}
+	}
+	return snaps, nil
+}
+
+func WaitSnapshotReady(ctx context.Context, client *gobizfly.Client, snapshotID string) error {
+	backoff := wait.Backoff{
+		Duration: diskDetachInitDelay,
+		Factor:   diskDetachFactor,
+		Steps:    diskDetachSteps,
+	}
+
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		snap, err := client.Snapshot.Get(ctx, snapshotID)
+		if err != nil {
+			return false, err
+		}
+		if snap.Status == snapshotAvailableStatus {
+			return true, nil
+		}
+		return false, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = fmt.Errorf("Timeout, Snapshot  %s is still not Ready %v", snapshotID, err)
+	}
+	return nil
 }

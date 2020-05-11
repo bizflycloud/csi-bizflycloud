@@ -149,7 +149,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 	}
 
 	// Check volume is already attached
-	if volumeInServer(volumeID, svr.AttachedVolumes){
+	if volumeInServer(volumeID, svr.AttachedVolumes) {
 		goto publishVolume
 	}
 
@@ -164,24 +164,23 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		klog.V(3).Infof("Failed to WaitDiskAttached: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
 	}
-	publishVolume:
-		devicePath, err := GetAttachmentDiskPath(ctx, cs.Client, instanceID, volumeID)
-		if err != nil {
-			klog.V(3).Infof("Failed to GetAttachmentDiskPath: %v", err)
-			return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
-		}
+publishVolume:
+	devicePath, err := GetAttachmentDiskPath(ctx, cs.Client, instanceID, volumeID)
+	if err != nil {
+		klog.V(3).Infof("Failed to GetAttachmentDiskPath: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume failed with error %v", err))
+	}
 
-		klog.V(4).Infof("ControllerPublishVolume %s on %s", volumeID, instanceID)
+	klog.V(4).Infof("ControllerPublishVolume %s on %s", volumeID, instanceID)
 
-		// Publish Volume Info
-		pvInfo := map[string]string{}
-		pvInfo["DevicePath"] = devicePath
+	// Publish Volume Info
+	pvInfo := map[string]string{}
+	pvInfo["DevicePath"] = devicePath
 
-		return &csi.ControllerPublishVolumeResponse{
-			PublishContext: pvInfo,
-		}, nil
+	return &csi.ControllerPublishVolumeResponse{
+		PublishContext: pvInfo,
+	}, nil
 }
-
 
 func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	// Volume Detach
@@ -253,17 +252,164 @@ func (cs *controllerServer) ListVolumes(ctx context.Context, req *csi.ListVolume
 }
 
 func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	return nil, nil
+	name := req.Name
+	volumeId := req.SourceVolumeId
+
+	if name == "" {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot name must be provided in CreateSnapshot request")
+	}
+
+	if volumeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "VolumeID must be provided in CreateSnapshot request")
+	}
+
+	// Verify a snapshot with the provided name doesn't already exist for this tenant
+	snapshots, err := GetSnapshotByNameAndVolumeID(ctx, cs.Client, volumeId, name)
+	if err != nil {
+		klog.V(3).Infof("Failed to query for existing Snapshot during CreateSnapshot: %v", err)
+	}
+	var snap *gobizfly.Snapshot
+
+	if len(snapshots) == 1 {
+		snap = snapshots[0]
+
+		if snap.VolumeId != volumeId {
+			return nil, status.Error(codes.AlreadyExists, "Snapshot with given name already exists, with different source volume ID")
+		}
+
+		klog.V(3).Infof("Found existing snapshot %s on %s", name, volumeId)
+
+	} else if len(snapshots) > 1 {
+		klog.V(3).Infof("found multiple existing snapshots with selected name (%s) during create", name)
+		return nil, status.Error(codes.Internal, "Multiple snapshots reported by Cinder with same name")
+
+	} else {
+		scr := gobizfly.SnapshotCreateRequest{
+			Name:     name,
+			VolumeId: volumeId,
+			Force:    true,
+		}
+		snap, err = cs.Client.Snapshot.Create(ctx, &scr)
+		if err != nil {
+			klog.V(3).Infof("Failed to Create snapshot: %v", err)
+			return nil, status.Error(codes.Internal, fmt.Sprintf("CreateSnapshot failed with error %v", err))
+		}
+
+		klog.V(3).Infof("CreateSnapshot %s on %s", name, volumeId)
+	}
+
+	//TODO Convert Create time
+	//ctime, err := ptypes.TimestampProto(snap.CreateAt)
+	//if err != nil {
+	//	klog.Errorf("Error to convert time to timestamp: %v", err)
+	//}
+
+	err = WaitSnapshotReady(ctx, cs.Client, snap.Id)
+	if err != nil {
+		klog.V(3).Infof("Failed to WaitSnapshotReady: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("CreateSnapshot failed with error %v", err))
+	}
+
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SnapshotId:     snap.Id,
+			SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
+			SourceVolumeId: snap.VolumeId,
+			//CreationTime:   ctime,
+			ReadyToUse: true,
+		},
+	}, nil
 }
 
 func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 
-	return nil, nil
+	id := req.SnapshotId
+
+	if id == "" {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot ID must be provided in DeleteSnapshot request")
+	}
+
+	err := cs.Client.Snapshot.Delete(ctx, id)
+	if err != nil {
+		if errors.Is(err, gobizfly.ErrNotFound) {
+			klog.V(3).Infof("Snapshot %s is already deleted.", id)
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+		klog.V(3).Infof("Failed to Delete snapshot: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("DeleteSnapshot failed with error %v", err))
+	}
+	return &csi.DeleteSnapshotResponse{}, nil
 }
 
 func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 
-	return nil, nil
+	if len(req.GetSnapshotId()) != 0 {
+		snap, err := cs.Client.Snapshot.Get(ctx, req.SnapshotId)
+		if err != nil {
+			klog.V(3).Infof("Failed to Get snapshot: %v", err)
+			return &csi.ListSnapshotsResponse{}, nil
+		}
+
+		//TODO Convert Create time
+		//ctime, err := ptypes.TimestampProto(snap.CreateAt)
+
+		entry := &csi.ListSnapshotsResponse_Entry{
+			Snapshot: &csi.Snapshot{
+				SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
+				SnapshotId:     snap.Id,
+				SourceVolumeId: snap.VolumeId,
+				//CreationTime:   ctime,
+				ReadyToUse: true,
+			},
+		}
+
+		entries := []*csi.ListSnapshotsResponse_Entry{entry}
+		return &csi.ListSnapshotsResponse{
+			Entries: entries,
+		}, err
+
+	}
+
+	var vlist []*gobizfly.Snapshot
+	var err error
+
+	if len(req.GetSourceVolumeId()) != 0 {
+		vlist, err = GetSnapshotByNameAndVolumeID(ctx, cs.Client, "", req.GetSourceVolumeId())
+		if err != nil {
+			klog.V(3).Infof("Failed to ListSnapshots: %v", err)
+			return nil, status.Error(codes.Internal, fmt.Sprintf("ListSnapshots get snapshot failed with error %v", err))
+		}
+	} else {
+		vlist, err = cs.Client.Snapshot.List(ctx, &gobizfly.ListOptions{})
+		if err != nil {
+			klog.V(3).Infof("Failed to ListSnapshots: %v", err)
+			return nil, status.Error(codes.Internal, fmt.Sprintf("ListSnapshots get snapshot failed with error %v", err))
+
+		}
+
+	}
+
+	var ventries []*csi.ListSnapshotsResponse_Entry
+	for _, v := range vlist {
+		//TODO Convert Create time
+		//ctime, err := ptypes.TimestampProto(v.CreateAt)
+		//if err != nil {
+		//	klog.Errorf("Error to convert time to timestamp: %v", err)
+		//}
+		ventry := csi.ListSnapshotsResponse_Entry{
+			Snapshot: &csi.Snapshot{
+				SizeBytes:      int64(v.Size * 1024 * 1024 * 1024),
+				SnapshotId:     v.Id,
+				SourceVolumeId: v.VolumeId,
+				//CreationTime:   ctime,
+				ReadyToUse: true,
+			},
+		}
+		ventries = append(ventries, &ventry)
+	}
+	return &csi.ListSnapshotsResponse{
+		Entries: ventries,
+	}, nil
 }
 
 // ControllerGetCapabilities implements the default GRPC callout.

@@ -4,7 +4,7 @@ metadata:
   name: ssd-hn1
 provisioner: volume.csi.bizflycloud.vn
 allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
 parameters:
   type: SSD
-  availability: HN1
   category: enterprise

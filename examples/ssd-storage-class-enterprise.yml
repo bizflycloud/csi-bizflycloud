@@ -3,6 +3,7 @@ kind: StorageClass
 metadata:
   name: ssd-hn1
 provisioner: volume.csi.bizflycloud.vn
+allowVolumeExpansion: true
 parameters:
   type: SSD
   availability: HN1

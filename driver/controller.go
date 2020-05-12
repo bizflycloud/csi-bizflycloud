@@ -4,14 +4,19 @@ import (
 	"errors"
 	"fmt"
 
+	"time"
+
 	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"github.com/golang/protobuf/ptypes"
 	"k8s.io/cloud-provider-openstack/pkg/volume/util"
 	"k8s.io/klog"
 )
+
+const RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
 
 type controllerServer struct {
 	Driver *VolumeDriver
@@ -298,11 +303,11 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		klog.V(3).Infof("CreateSnapshot %s on %s", name, volumeId)
 	}
 
-	//TODO Convert Create time
-	//ctime, err := ptypes.TimestampProto(snap.CreateAt)
-	//if err != nil {
-	//	klog.Errorf("Error to convert time to timestamp: %v", err)
-	//}
+	t, _ := time.Parse(RFC3339MilliNoZ, snap.CreateAt)
+	ctime, err := ptypes.TimestampProto(t)
+	if err != nil {
+		klog.Errorf("Error to convert time to timestamp: %v", err)
+	}
 
 	err = WaitSnapshotReady(ctx, cs.Client, snap.Id)
 	if err != nil {
@@ -315,7 +320,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			SnapshotId:     snap.Id,
 			SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
 			SourceVolumeId: snap.VolumeId,
-			//CreationTime:   ctime,
+			CreationTime:   ctime,
 			ReadyToUse: true,
 		},
 	}, nil
@@ -350,15 +355,18 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 			return &csi.ListSnapshotsResponse{}, nil
 		}
 
-		//TODO Convert Create time
-		//ctime, err := ptypes.TimestampProto(snap.CreateAt)
+		t, _ := time.Parse(RFC3339MilliNoZ, snap.CreateAt)
+		ctime, err := ptypes.TimestampProto(t)
+		if err != nil {
+			klog.Errorf("Error to convert time to timestamp: %v", err)
+		}
 
 		entry := &csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
 				SnapshotId:     snap.Id,
 				SourceVolumeId: snap.VolumeId,
-				//CreationTime:   ctime,
+				CreationTime:   ctime,
 				ReadyToUse: true,
 			},
 		}
@@ -391,17 +399,18 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 
 	var ventries []*csi.ListSnapshotsResponse_Entry
 	for _, v := range vlist {
-		//TODO Convert Create time
-		//ctime, err := ptypes.TimestampProto(v.CreateAt)
-		//if err != nil {
-		//	klog.Errorf("Error to convert time to timestamp: %v", err)
-		//}
+		t, _ := time.Parse(RFC3339MilliNoZ, v.CreateAt)
+		ctime, err := ptypes.TimestampProto(t)
+		if err != nil {
+			klog.Errorf("Error to convert time to timestamp: %v", err)
+		}
+
 		ventry := csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      int64(v.Size * 1024 * 1024 * 1024),
 				SnapshotId:     v.Id,
 				SourceVolumeId: v.VolumeId,
-				//CreationTime:   ctime,
+				CreationTime:   ctime,
 				ReadyToUse: true,
 			},
 		}
@@ -467,8 +476,44 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 }
 
 func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, nil
-}
+	klog.V(4).Infof("ControllerExpandVolume: called with args %+v", *req)
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
+	cap := req.GetCapacityRange()
+	if cap == nil {
+		return nil, status.Error(codes.InvalidArgument, "Capacity range not provided")
+	}
+
+	volSizeBytes := int64(req.GetCapacityRange().GetRequiredBytes())
+	volSizeGB := int(util.RoundUpSize(volSizeBytes, 1024*1024*1024))
+	maxVolSize := cap.GetLimitBytes()
+
+	if maxVolSize > 0 && maxVolSize < volSizeBytes {
+		return nil, status.Error(codes.OutOfRange, "After round-up, volume size exceeds the limit specified")
+	}
+
+	_, err := cs.Client.Volume.Get(ctx, volumeID)
+	if err != nil {
+		if errors.Is(err, gobizfly.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "Volume not found")
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
+	}
+
+	_, err = cs.Client.Volume.ExtendVolume(ctx, volumeID, volSizeGB)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Could not resize volume %q to size %v: %v", volumeID, volSizeGB, err))
+	}
+
+	klog.V(4).Infof("ControllerExpandVolume resized volume %v to size %v", volumeID, volSizeGB)
+
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         volSizeBytes,
+		NodeExpansionRequired: true,
+	}, nil}
 
 func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 	for _, topology := range requirement.GetPreferred() {

@@ -62,5 +62,6 @@ require (
 	k8s.io/cloud-provider-openstack v1.18.0
 	k8s.io/component-base v0.18.2
 	k8s.io/klog v1.0.0
+	k8s.io/kubernetes v1.18.2 // indirect
 	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66
 )

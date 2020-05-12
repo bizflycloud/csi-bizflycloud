@@ -9,11 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	// "k8s.io/cloud-provider-openstack/pkg/csi/cinder"
 	"github.com/bizflycloud/csi-bizflycloud/driver"
 	"github.com/bizflycloud/gobizfly"
 	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
-
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
@@ -38,7 +36,7 @@ func main() {
 
 	cmd := &cobra.Command{
 		Use:   "BizFlyCloudVolumeDriver",
-		Short: "CSI based Cinder driver",
+		Short: "CSI based BizFly Cloud Volume driver",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Glog requires this otherwise it complains.
 			flag.CommandLine.Parse(nil)
@@ -79,8 +77,6 @@ func main() {
 	cmd.PersistentFlags().StringVar(&api_url, "api_url", "https://manage.bizflycloud.vn", "BizFly Cloud API URL")
 
 	cmd.PersistentFlags().StringVar(&cluster, "cluster", "", "The identifier of the cluster that the plugin is running in.")
-
-	// openstack.AddExtraFlags(pflag.CommandLine)
 
 	logs.InitLogs()
 	defer logs.FlushLogs()

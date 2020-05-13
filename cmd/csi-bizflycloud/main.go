@@ -117,7 +117,7 @@ func handle() {
 
 	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{Username: username, Password: password})
 	if err != nil {
-		klog.Warningf("Failed to GetOpenStackProvider: %v", err)
+		klog.Errorf("Failed to get bizfly client token: %v", err)
 		return
 	}
 	client.SetKeystoneToken(tok.KeystoneToken)

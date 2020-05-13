@@ -8,10 +8,10 @@ import (
 
 	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"github.com/golang/protobuf/ptypes"
 	"k8s.io/cloud-provider-openstack/pkg/volume/util"
 	"k8s.io/klog"
 )
@@ -321,7 +321,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
 			SourceVolumeId: snap.VolumeId,
 			CreationTime:   ctime,
-			ReadyToUse: true,
+			ReadyToUse:     true,
 		},
 	}, nil
 }
@@ -367,7 +367,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 				SnapshotId:     snap.Id,
 				SourceVolumeId: snap.VolumeId,
 				CreationTime:   ctime,
-				ReadyToUse: true,
+				ReadyToUse:     true,
 			},
 		}
 
@@ -411,7 +411,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 				SnapshotId:     v.Id,
 				SourceVolumeId: v.VolumeId,
 				CreationTime:   ctime,
-				ReadyToUse: true,
+				ReadyToUse:     true,
 			},
 		}
 		ventries = append(ventries, &ventry)
@@ -434,7 +434,7 @@ func (cs *controllerServer) ControllerGetCapabilities(ctx context.Context, req *
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	reqVolCap := req.GetVolumeCapabilities()
 
-	if reqVolCap == nil || len(reqVolCap) == 0 {
+	if len(reqVolCap) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "ValidateVolumeCapabilities Volume Capabilities must be provided")
 	}
 	volumeID := req.GetVolumeId()
@@ -513,7 +513,8 @@ func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes:         volSizeBytes,
 		NodeExpansionRequired: true,
-	}, nil}
+	}, nil
+}
 
 func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 	for _, topology := range requirement.GetPreferred() {

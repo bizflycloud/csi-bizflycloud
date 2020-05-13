@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/bizflycloud/gobizfly"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"time"
 )
 
 const (
-	volumeInUseStatus     = "in-use"
+	volumeInUseStatus       = "in-use"
 	snapshotAvailableStatus = "available"
 
 	diskAttachInitDelay = 1 * time.Second
@@ -32,7 +33,7 @@ func GetVolumesByName(ctx context.Context, client *gobizfly.Client, name string)
 			return vol, nil
 		}
 	}
-	return nil, errors.New("Volume not found")
+	return nil, errors.New("volume not found")
 }
 
 // GetAttachmentDiskPath gets disk path in a server
@@ -50,7 +51,7 @@ func GetAttachmentDiskPath(ctx context.Context, client *gobizfly.Client, serverI
 			return att.Device, nil
 		}
 	}
-	return "", errors.New("Attachment Disk Patch not found")
+	return "", errors.New("attachment Disk Patch not found")
 }
 
 func WaitDiskAttached(ctx context.Context, client *gobizfly.Client, serverId string, volumeID string) error {
@@ -68,8 +69,8 @@ func WaitDiskAttached(ctx context.Context, client *gobizfly.Client, serverId str
 		return attached, nil
 	})
 
-	if err == wait.ErrWaitTimeout {
-		err = fmt.Errorf("Volume %q failed to be attached within the alloted time", volumeID)
+	if errors.Is(err, wait.ErrWaitTimeout) {
+		err = fmt.Errorf("volume %q failed to be attached within the alloted time", volumeID)
 	}
 
 	return err
@@ -92,7 +93,7 @@ func WaitDiskDetached(ctx context.Context, client *gobizfly.Client, serverId str
 	})
 
 	if err == wait.ErrWaitTimeout {
-		err = fmt.Errorf("Volume %q failed to detach within the alloted time", volumeID)
+		err = fmt.Errorf("volume %q failed to detach within the alloted time", volumeID)
 	}
 
 	return err
@@ -111,13 +112,13 @@ func diskIsAttached(ctx context.Context, client *gobizfly.Client, serverId strin
 	return false, nil
 }
 
-func GetSnapshotByNameAndVolumeID(ctx context.Context, client *gobizfly.Client, volumeId string, name string) ([]*gobizfly.Snapshot, error){
+func GetSnapshotByNameAndVolumeID(ctx context.Context, client *gobizfly.Client, volumeId string, name string) ([]*gobizfly.Snapshot, error) {
 	snapshots, err := client.Snapshot.List(ctx, &gobizfly.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	var snaps []*gobizfly.Snapshot
+	snaps := make([]*gobizfly.Snapshot, 0, len(snapshots))
 	for _, s := range snapshots {
 		if s.VolumeId == volumeId && s.Name == name {
 			snaps = append(snaps, s)
@@ -138,14 +139,11 @@ func WaitSnapshotReady(ctx context.Context, client *gobizfly.Client, snapshotID 
 		if err != nil {
 			return false, err
 		}
-		if snap.Status == snapshotAvailableStatus {
-			return true, nil
-		}
-		return false, nil
+		return snap.Status == snapshotAvailableStatus, nil
 	})
 
-	if err == wait.ErrWaitTimeout {
-		err = fmt.Errorf("Timeout, Snapshot  %s is still not Ready %v", snapshotID, err)
+	if errors.Is(err, wait.ErrWaitTimeout) {
+		return fmt.Errorf("timeout, Snapshot  %s is still not Ready %v", snapshotID, err)
 	}
-	return nil
+	return err
 }

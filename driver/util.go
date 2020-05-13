@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
-	"github.com/bizflycloud/gobizfly"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
 )
@@ -40,7 +40,7 @@ func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *c
 func NewControllerServer(d *VolumeDriver, client *gobizfly.Client) *controllerServer {
 	return &controllerServer{
 		Driver: d,
-		Client:  client,
+		Client: client,
 	}
 }
 
@@ -55,7 +55,7 @@ func NewNodeServer(d *VolumeDriver, mount mount.IMount, metadata openstack.IMeta
 		Driver:   d,
 		Mount:    mount,
 		Metadata: metadata,
-		Client:    client,
+		Client:   client,
 	}
 }
 
@@ -66,7 +66,7 @@ func ParseEndpoint(ep string) (string, string, error) {
 			return s[0], s[1], nil
 		}
 	}
-	return "", "", fmt.Errorf("Invalid endpoint: %v", ep)
+	return "", "", fmt.Errorf("invalid endpoint: %v", ep)
 }
 
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {

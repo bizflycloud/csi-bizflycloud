@@ -6,26 +6,26 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"google.golang.org/grpc/status"
-	cpoerrors "k8s.io/cloud-provider-openstack/pkg/util/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
-	"k8s.io/klog"
-	utilpath "k8s.io/utils/path"
+	"google.golang.org/grpc/status"
 	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
+	"k8s.io/cloud-provider-openstack/pkg/util/blockdevice"
+	cpoerrors "k8s.io/cloud-provider-openstack/pkg/util/errors"
 	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
-	"k8s.io/cloud-provider-openstack/pkg/util/blockdevice"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/resizefs"
-	"github.com/bizflycloud/gobizfly"
+	utilpath "k8s.io/utils/path"
 )
 
 type nodeServer struct {
 	Driver   *VolumeDriver
 	Mount    mount.IMount
 	Metadata openstack.IMetadata
-	Client    *gobizfly.Client
+	Client   *gobizfly.Client
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -105,7 +105,7 @@ func nodePublishVolumeForBlock(req *csi.NodePublishVolumeRequest, ns *nodeServer
 	m := ns.Mount
 
 	// Do not trust the path provided by cinder, get the real path on node
-	source, err := getDevicePath(volumeID, m)
+	source := getDevicePath(volumeID, m)
 	if source == "" {
 		return nil, status.Error(codes.Internal, "Unable to find Device path for volume")
 	}
@@ -146,10 +146,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume volumeID must be provided")
 	}
 
-	vol, err := ns.Client.Volume.Get(ctx, volumeID)
-
-	if err != nil {
-
+	if _, err := ns.Client.Volume.Get(ctx, volumeID); err != nil {
 		if !cpoerrors.IsNotFound(err) {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
 		}
@@ -157,7 +154,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		// if not found by id, try to search by name
 		volName := fmt.Sprintf("ephemeral-%s", volumeID)
 
-		vol, err = GetVolumesByName(ctx, ns.Client, volName)
+		vol, err := GetVolumesByName(ctx, ns.Client, volName)
 
 		//if volume not found then GetVolumesByName returns empty list
 		if err != nil {
@@ -188,7 +185,6 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	klog.V(4).Infof("NodeStageVolume: called with args %+v", *req)
 
@@ -217,7 +213,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	m := ns.Mount
 	// Do not trust the path provided by cinder, get the real path on node
-	devicePath, err := getDevicePath(volumeID, m)
+	devicePath := getDevicePath(volumeID, m)
 	if devicePath == "" {
 		return nil, status.Error(codes.Internal, "Unable to find Device path for volume")
 	}
@@ -295,7 +291,8 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &csi.NodeUnstageVolumeResponse{}, nil}
+	return &csi.NodeUnstageVolumeResponse{}, nil
+}
 
 func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	nodeID, err := getNodeID(ns.Mount, ns.Metadata, "configDrive,metadataService")
@@ -361,18 +358,19 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	if _, err := r.Resize(devicePath, volumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not resize volume %q:  %v", volumeID, err)
 	}
-	return &csi.NodeExpandVolumeResponse{}, nil}
+	return &csi.NodeExpandVolumeResponse{}, nil
+}
 
-func getDevicePath(volumeID string, m mount.IMount) (string, error) {
-	var devicePath string
-	devicePath, _ = m.GetDevicePath(volumeID)
+// getDevicePath returns the path of given volume id. It returns empty
+// path if not found. The caller should check for empty path before
+// processing further.
+func getDevicePath(volumeID string, m mount.IMount) string {
+	devicePath, _ := m.GetDevicePath(volumeID)
 	if devicePath == "" {
 		// try to get from metadata service
 		devicePath = metadata.GetDevicePath(volumeID)
 	}
-
-	return devicePath, nil
-
+	return devicePath
 }
 
 func getNodeIDMountProvider(m mount.IMount) (string, error) {

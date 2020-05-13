@@ -1,8 +1,8 @@
 package driver
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/bizflycloud/gobizfly"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
@@ -18,11 +18,11 @@ var (
 )
 
 type VolumeDriver struct {
-	name        string
-	nodeID      string
-	version     string
-	endpoint    string
-	cluster     string
+	name     string
+	nodeID   string
+	version  string
+	endpoint string
+	cluster  string
 
 	ids *identityServer
 	cs  *controllerServer
@@ -68,21 +68,17 @@ func NewDriver(nodeID, endpoint, cluster string) *VolumeDriver {
 
 // AddControllerServiceCapabilities add capabilities for driver
 func (d *VolumeDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {
-	var csc []*csi.ControllerServiceCapability
-
+	csc := make([]*csi.ControllerServiceCapability, 0, len(cl))
 	for _, c := range cl {
 		klog.Infof("Enabling controller service capability: %v", c.String())
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
-
 	d.cscap = csc
-
-	return
 }
 
 // AddVolumeCapabilityAccessModes add access mode capability for volume driver
 func (d *VolumeDriver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
-	var vca []*csi.VolumeCapability_AccessMode
+	vca := make([]*csi.VolumeCapability_AccessMode, 0, len(vc))
 	for _, c := range vc {
 		klog.Infof("Enabling volume access mode: %v", c.String())
 		vca = append(vca, NewVolumeCapabilityAccessMode(c))
@@ -93,7 +89,7 @@ func (d *VolumeDriver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_
 
 // AddNodeServiceCapabilities add node service capabilities
 func (d *VolumeDriver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_Type) error {
-	var nsc []*csi.NodeServiceCapability
+	nsc := make([]*csi.NodeServiceCapability, 0, len(nl))
 	for _, n := range nl {
 		klog.Infof("Enabling node service capability: %v", n.String())
 		nsc = append(nsc, NewNodeServiceCapability(n))
@@ -104,22 +100,18 @@ func (d *VolumeDriver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability
 
 // SetupDriver setups driver for volume driver
 func (d *VolumeDriver) SetupDriver(client *gobizfly.Client, mount mount.IMount, metadata openstack.IMetadata) {
-
 	d.ids = NewIdentityServer(d)
 	d.cs = NewControllerServer(d, client)
 	d.ns = NewNodeServer(d, mount, metadata, client)
-
 }
 
 // Run run driver
 func (d *VolumeDriver) Run() {
-
-	RunControllerandNodePublishServer(d.endpoint, d.ids, d.cs, d.ns)
+	RunControllerAndNodePublishServer(d.endpoint, d.ids, d.cs, d.ns)
 }
 
-// RunControllerandNodePublishServer run controller
-func RunControllerandNodePublishServer(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
-
+// RunControllerAndNodePublishServer run controller
+func RunControllerAndNodePublishServer(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
 	s := NewNonBlockingGRPCServer()
 	s.Start(endpoint, ids, cs, ns)
 	s.Wait()

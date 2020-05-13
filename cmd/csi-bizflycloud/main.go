@@ -7,14 +7,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/bizflycloud/gobizfly"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/bizflycloud/csi-bizflycloud/driver"
-	"github.com/bizflycloud/gobizfly"
 	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
+
+	"github.com/bizflycloud/csi-bizflycloud/driver"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 	username string
 	password string
 	cluster  string
-	api_url	 string
+	api_url  string
 )
 
 func init() {
@@ -93,8 +94,8 @@ func handle() {
 
 	d := driver.NewDriver(nodeID, endpoint, cluster)
 
-	//Intiliaze mount
-	mount, err := mount.GetMountProvider()
+	// Intiliaze mount
+	iMount, err := mount.GetMountProvider()
 	if err != nil {
 		klog.V(3).Infof("Failed to GetMountProvider: %v", err)
 	}
@@ -106,19 +107,21 @@ func handle() {
 	}
 
 	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(api_url))
+	if err != nil {
+		klog.Errorf("failed to create bizfly client: %v", err)
+		return
+	}
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancelFunc()
 
 	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{Username: username, Password: password})
-
-	client.SetKeystoneToken(tok.KeystoneToken)
-
 	if err != nil {
 		klog.Warningf("Failed to GetOpenStackProvider: %v", err)
 		return
 	}
+	client.SetKeystoneToken(tok.KeystoneToken)
 
-	d.SetupDriver(client, mount, metadatda)
+	d.SetupDriver(client, iMount, metadatda)
 	d.Run()
 }

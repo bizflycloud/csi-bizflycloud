@@ -53,8 +53,9 @@ spec:
             - /bin/csi-bizflycloud
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--username=$(BIZFLYCLOUD_EMAIL)"
-            - "--password=$(BIZFLYCLOUD_PASSWORD)"
+            - "--auth_method=application_credential"
+            - "--application_credential_id=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID)"
+            - "--application_credential_secret=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET)"
           env:
             - name: NODE_ID
               valueFrom:
@@ -62,16 +63,16 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
-            - name: BIZFLYCLOUD_EMAIL
+            - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID
               valueFrom:
                 secretKeyRef:
                   name: bizflycloud
-                  key: email_address
-            - name: BIZFLYCLOUD_PASSWORD
+                  key: application_credential_id
+            - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET
               valueFrom:
                 secretKeyRef:
                   name: bizflycloud
-                  key: password
+                  key: application_credential_secret
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir

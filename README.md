@@ -65,7 +65,7 @@ Snapshots can be created and restored through `VolumeSnapshot` objects.
 
 See also [the example](/examples/snapshot).
 
-## Install BiZFly Cloud CSI Driver
+## Install BizFly Cloud CSI Driver
 
 Please Refer to install [BizFly Cloud CSI Driver](/docs/install.md)
 

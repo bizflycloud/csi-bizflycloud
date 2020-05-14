@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bizflycloud/csi-bizflycloud/driver"
 	"github.com/bizflycloud/gobizfly"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -14,17 +15,18 @@ import (
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
-
-	"github.com/bizflycloud/csi-bizflycloud/driver"
 )
 
 var (
-	endpoint string
-	nodeID   string
-	username string
-	password string
-	cluster  string
-	api_url  string
+	endpoint      string
+	nodeID        string
+	authMethod    string
+	username      string
+	password      string
+	appCredID     string
+	appCredSecret string
+	cluster       string
+	apiUrl       string
 )
 
 func init() {
@@ -69,13 +71,17 @@ func main() {
 	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
 	cmd.MarkPersistentFlagRequired("endpoint")
 
+	cmd.PersistentFlags().StringVar(&authMethod, "auth_method", "password", "Authentication method")
+
 	cmd.PersistentFlags().StringVar(&username, "username", "", "BizFly Cloud username")
-	cmd.MarkPersistentFlagRequired("username")
 
 	cmd.PersistentFlags().StringVar(&password, "password", "", "BizFly Cloud password")
-	cmd.MarkPersistentFlagRequired("password")
 
-	cmd.PersistentFlags().StringVar(&api_url, "api_url", "https://manage.bizflycloud.vn", "BizFly Cloud API URL")
+	cmd.PersistentFlags().StringVar(&appCredID, "application_credential_id", "", "BizFly Cloud Application Credential ID")
+
+	cmd.PersistentFlags().StringVar(&appCredSecret, "application_credential_secret", "", "BizFly Cloud Application Credential Secret")
+
+	cmd.PersistentFlags().StringVar(&apiUrl, "api_url", "https://manage.bizflycloud.vn", "BizFly Cloud API URL")
 
 	cmd.PersistentFlags().StringVar(&cluster, "cluster", "", "The identifier of the cluster that the plugin is running in.")
 
@@ -106,16 +112,23 @@ func handle() {
 		klog.V(3).Infof("Failed to GetMetadataProvider: %v", err)
 	}
 
-	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(api_url))
+	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl))
 	if err != nil {
 		klog.Errorf("failed to create bizfly client: %v", err)
 		return
 	}
-
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancelFunc()
 
-	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{Username: username, Password: password})
+	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{
+		AuthMethod:    authMethod,
+		Username:      username,
+		Password:      password,
+		AppCredID:     appCredID,
+		AppCredSecret: appCredSecret})
+
+	client.SetKeystoneToken(tok.KeystoneToken)
+
 	if err != nil {
 		klog.Errorf("Failed to get bizfly client token: %v", err)
 		return

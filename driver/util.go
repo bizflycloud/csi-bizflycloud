@@ -67,12 +67,11 @@ func NewIdentityServer(d *VolumeDriver) *identityServer {
 	}
 }
 
-func NewNodeServer(d *VolumeDriver, mount mount.IMount, metadata openstack.IMetadata, client *gobizfly.Client) *nodeServer {
+func NewNodeServer(d *VolumeDriver, mount mount.IMount, metadata openstack.IMetadata) *nodeServer {
 	return &nodeServer{
 		Driver:   d,
 		Mount:    mount,
 		Metadata: metadata,
-		Client:   client,
 	}
 }
 

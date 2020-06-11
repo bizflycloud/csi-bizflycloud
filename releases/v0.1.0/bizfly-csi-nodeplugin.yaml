@@ -48,14 +48,11 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:latest
+          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:v0.1.0
           args :
             - /bin/csi-bizflycloud
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--auth_method=application_credential"
-            - "--application_credential_id=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID)"
-            - "--application_credential_secret=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET)"
           env:
             - name: NODE_ID
               valueFrom:
@@ -63,16 +60,6 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
-            - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID
-              valueFrom:
-                secretKeyRef:
-                  name: bizflycloud
-                  key: application_credential_id
-            - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: bizflycloud
-                  key: application_credential_secret
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir

@@ -82,7 +82,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: bizflycloud-csi-plugin
-          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:v0.1
+          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:v0.1.0
           args :
             - /bin/csi-bizflycloud
             - "--nodeid=$(NODE_ID)"
@@ -91,6 +91,8 @@ spec:
             - "--auth_method=application_credential"
             - "--application_credential_id=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID)"
             - "--application_credential_secret=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET)"
+            - "--tenant_id=$(TENANT_ID)"
+            - "--is_control_plane=true"
           env:
             - name: NODE_ID
               valueFrom:
@@ -110,7 +112,12 @@ spec:
                 secretKeyRef:
                   name: bizflycloud
                   key: application_credential_secret
-          imagePullPolicy: "IfNotPresent"
+            - name: TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: tenant_id
+          imagePullPolicy: "Always"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

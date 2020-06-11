@@ -115,11 +115,16 @@ func (d *VolumeDriver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability
 	return nil
 }
 
-// SetupDriver setups driver for volume driver
-func (d *VolumeDriver) SetupDriver(client *gobizfly.Client, mount mount.IMount, metadata openstack.IMetadata) {
+// SetupControlDriver setups driver for control plane
+func (d *VolumeDriver) SetupControlDriver(client *gobizfly.Client, mount mount.IMount, metadata openstack.IMetadata) {
 	d.ids = NewIdentityServer(d)
 	d.cs = NewControllerServer(d, client)
-	d.ns = NewNodeServer(d, mount, metadata, client)
+}
+
+// SetupControlDriver setups driver for control plane
+func (d *VolumeDriver) SetupNodeDriver(mount mount.IMount, metadata openstack.IMetadata) {
+	d.ids = NewIdentityServer(d)
+	d.ns = NewNodeServer(d, mount, metadata)
 }
 
 // Run run driver

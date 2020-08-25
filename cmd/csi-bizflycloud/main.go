@@ -45,6 +45,7 @@ var (
 	appCredSecret  string
 	cluster        string
 	apiUrl         string
+	region			string
 	isControlPlane bool
 )
 
@@ -108,6 +109,8 @@ func main() {
 
 	cmd.PersistentFlags().StringVar(&cluster, "cluster", "", "The identifier of the cluster that the plugin is running in.")
 
+	cmd.PersistentFlags().StringVar(&region, "region", "HN", "BizFly Cloud Region Name. Available: HN and HCM")
+
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
@@ -136,7 +139,7 @@ func handle() {
 	}
 
 	if isControlPlane {
-		client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID))
+		client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
 		if err != nil {
 			klog.Errorf("failed to create bizfly client: %v", err)
 			return

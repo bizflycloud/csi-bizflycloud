@@ -45,7 +45,7 @@ var (
 	appCredSecret  string
 	cluster        string
 	apiUrl         string
-	region			string
+	region         string
 	isControlPlane bool
 )
 

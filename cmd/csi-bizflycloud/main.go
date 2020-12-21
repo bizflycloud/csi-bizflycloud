@@ -154,12 +154,11 @@ func handle() {
 			AppCredID:     appCredID,
 			AppCredSecret: appCredSecret})
 
-		client.SetKeystoneToken(tok.KeystoneToken)
-
 		if err != nil {
 			klog.Errorf("Failed to get bizfly client token: %v", err)
 			return
 		}
+		
 		client.SetKeystoneToken(tok.KeystoneToken)
 		d.SetupControlDriver(client, iMount, metadatda)
 		d.Run()

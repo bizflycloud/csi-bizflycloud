@@ -20,7 +20,7 @@ package driver
 import (
 	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
+	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
 )
@@ -70,6 +70,7 @@ func NewDriver(nodeID, endpoint, cluster string) *VolumeDriver {
 			csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+			csi.ControllerServiceCapability_RPC_LIST_VOLUMES_PUBLISHED_NODES,
 		})
 	d.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
@@ -77,7 +78,7 @@ func NewDriver(nodeID, endpoint, cluster string) *VolumeDriver {
 		[]csi.NodeServiceCapability_RPC_Type{
 			csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 			csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
-			//csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+			csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 		})
 
 	return d
@@ -91,6 +92,7 @@ func (d *VolumeDriver) AddControllerServiceCapabilities(cl []csi.ControllerServi
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
 	d.cscap = csc
+	return
 }
 
 // AddVolumeCapabilityAccessModes add access mode capability for volume driver
@@ -116,13 +118,13 @@ func (d *VolumeDriver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability
 }
 
 // SetupControlDriver setups driver for control plane
-func (d *VolumeDriver) SetupControlDriver(client *gobizfly.Client, mount mount.IMount, metadata openstack.IMetadata) {
+func (d *VolumeDriver) SetupControlDriver(client *gobizfly.Client, mount mount.IMount, metadata metadata.IMetadata) {
 	d.ids = NewIdentityServer(d)
 	d.cs = NewControllerServer(d, client)
 }
 
 // SetupControlDriver setups driver for control plane
-func (d *VolumeDriver) SetupNodeDriver(mount mount.IMount, metadata openstack.IMetadata) {
+func (d *VolumeDriver) SetupNodeDriver(mount mount.IMount, metadata metadata.IMetadata) {
 	d.ids = NewIdentityServer(d)
 	d.ns = NewNodeServer(d, mount, metadata)
 }

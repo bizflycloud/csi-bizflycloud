@@ -29,7 +29,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/cloud-provider-openstack/pkg/volume/util"
+	"k8s.io/cloud-provider-openstack/pkg/util"
 	"k8s.io/klog"
 )
 
@@ -490,6 +490,10 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 
 func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, fmt.Sprintf("GetCapacity is not yet implemented"))
+}
+
+func (cs *controllerServer) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, fmt.Sprintf("ControllerGetVolume is not yet implemented"))
 }
 
 func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {

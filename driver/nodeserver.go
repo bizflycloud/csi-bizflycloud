@@ -23,24 +23,22 @@ import (
 	"path/filepath"
 	"strings"
 
-	//"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
 	"k8s.io/cloud-provider-openstack/pkg/util/blockdevice"
 	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/resizefs"
 	utilpath "k8s.io/utils/path"
+	mountutil "k8s.io/mount-utils"
 )
 
 type nodeServer struct {
 	Driver   *VolumeDriver
 	Mount    mount.IMount
-	Metadata openstack.IMetadata
+	Metadata metadata.IMetadata
 	//Client   *gobizfly.Client
 }
 
@@ -102,7 +100,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			}
 		}
 		// Mount
-		err = m.GetBaseMounter().Mount(source, targetPath, fsType, mountOptions)
+		err = m.Mounter().Mount(source, targetPath, fsType, mountOptions)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -140,7 +138,7 @@ func nodePublishVolumeForBlock(req *csi.NodePublishVolumeRequest, ns *nodeServer
 		return nil, status.Errorf(codes.Internal, "Error in making file %v", err)
 	}
 
-	if err := m.GetBaseMounter().Mount(source, targetPath, "", mountOptions); err != nil {
+	if err := m.Mounter().Mount(source, targetPath, "", mountOptions); err != nil {
 		if removeErr := os.Remove(targetPath); removeErr != nil {
 			return nil, status.Errorf(codes.Internal, "Could not remove mount target %q: %v", targetPath, err)
 		}
@@ -181,24 +179,14 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	//	}
 	//}
 
-	m := ns.Mount
-	notMnt, err := m.IsLikelyNotMountPointDetach(targetPath)
-	if err != nil && !mount.IsCorruptedMnt(err) {
-		klog.V(4).Infof("NodeUnpublishVolume: unable to unmount volume: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if notMnt && !mount.IsCorruptedMnt(err) {
-		// the volume is not mounted at all. There is no need for retrying to unmount.
-		klog.V(4).Infoln("NodeUnpublishVolume: skipping... not mounted any more")
-		return &csi.NodeUnpublishVolumeResponse{}, nil
+	err := ns.Mount.UnmountPath(targetPath)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unmount of targetpath %s failed with error %v", targetPath, err)
 	}
 
-	err = m.UnmountPath(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
+
 }
 
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -258,7 +246,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			options = append(options, mountFlags...)
 		}
 		// Mount
-		err = m.GetBaseMounter().FormatAndMount(devicePath, stagingTarget, fsType, options)
+		err = m.Mounter().FormatAndMount(devicePath, stagingTarget, fsType, options)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -289,20 +277,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	//	return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
 	//}
 
-	m := ns.Mount
-
-	notMnt, err := m.IsLikelyNotMountPointDetach(stagingTargetPath)
-	if err != nil && !mount.IsCorruptedMnt(err) {
-		klog.V(4).Infof("NodeUnstageVolume: unable to unmount volume: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if notMnt && !mount.IsCorruptedMnt(err) {
-		// the volume is not mounted at all. There is no need for retrying to unmount.
-		klog.V(4).Infoln("NodeUnstageVolume: skipping... not mounted any more")
-		return &csi.NodeUnstageVolumeResponse{}, nil
-	}
-
-	err = m.UnmountPath(stagingTargetPath)
+	err := ns.Mount.UnmountPath(stagingTargetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -311,7 +286,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 }
 
 func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	nodeID, err := getNodeID(ns.Mount, ns.Metadata, "configDrive,metadataService")
+	nodeID, err := ns.Metadata.GetInstanceID()
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("NodeGetInfo failed with error %v", err))
 	}
@@ -353,7 +328,7 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	volumePath := req.GetVolumePath()
 
 	args := []string{"-o", "source", "--noheadings", "--target", volumePath}
-	output, err := ns.Mount.GetBaseMounter().Exec.Command("findmnt", args...).CombinedOutput()
+	output, err := ns.Mount.Mounter().Exec.Command("findmnt", args...).CombinedOutput()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not determine device path: %v", err)
 
@@ -370,7 +345,7 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 		return nil, status.Errorf(codes.Internal, "Could not verify %q volume size: %v", volumeID, err)
 	}
 
-	r := resizefs.NewResizeFs(ns.Mount.GetBaseMounter())
+	r := mountutil.NewResizeFs(ns.Mount.Mounter().Exec)
 	if _, err := r.Resize(devicePath, volumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not resize volume %q:  %v", volumeID, err)
 	}
@@ -389,28 +364,7 @@ func getDevicePath(volumeID string, m mount.IMount) string {
 	return devicePath
 }
 
-func getNodeIDMountProvider(m mount.IMount) (string, error) {
-	nodeID, err := m.GetInstanceID()
-	if err != nil {
-		klog.V(3).Infof("Failed to GetInstanceID: %v", err)
-		return "", err
-	}
-	klog.V(5).Infof("getNodeIDMountProvider return node id %s", nodeID)
-
-	return nodeID, nil
-}
-
-func getNodeIDMetdataService(m openstack.IMetadata) (string, error) {
-
-	nodeID, err := m.GetInstanceID()
-	if err != nil {
-		return "", err
-	}
-	klog.V(5).Infof("getNodeIDMetdataService return node id %s", nodeID)
-	return nodeID, nil
-}
-
-func getAvailabilityZoneMetadataService(m openstack.IMetadata) (string, error) {
+func getAvailabilityZoneMetadataService(m metadata.IMetadata) (string, error) {
 
 	zone, err := m.GetAvailabilityZone()
 	if err != nil {
@@ -419,29 +373,3 @@ func getAvailabilityZoneMetadataService(m openstack.IMetadata) (string, error) {
 	return zone, nil
 }
 
-func getNodeID(mount mount.IMount, iMetadata openstack.IMetadata, order string) (string, error) {
-	elements := strings.Split(order, ",")
-
-	var nodeID string
-	var err error
-	for _, id := range elements {
-		id = strings.TrimSpace(id)
-		switch id {
-		case metadata.ConfigDriveID:
-			nodeID, err = getNodeIDMountProvider(mount)
-		case metadata.MetadataID:
-			nodeID, err = getNodeIDMetdataService(iMetadata)
-		default:
-			err = fmt.Errorf("%s is not a valid metadata search order option. Supported options are %s and %s", id, metadata.ConfigDriveID, metadata.MetadataID)
-		}
-		if err == nil {
-			break
-		}
-	}
-
-	if err != nil {
-		klog.Errorf("Failed to GetInstanceID from config drive or metadata service: %v", err)
-		return "", err
-	}
-	return nodeID, nil
-}

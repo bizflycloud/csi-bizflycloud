@@ -1,0 +1,42 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: premium-hdd
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: volume.csi.bizflycloud.vn
+allowVolumeExpansion: true
+parameters:
+  category: premium
+  type: HDD
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: premium-ssd
+provisioner: volume.csi.bizflycloud.vn
+allowVolumeExpansion: true
+parameters:
+  category: premium
+  type: SSD
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: enterprise-hdd
+provisioner: volume.csi.bizflycloud.vn
+allowVolumeExpansion: true
+parameters:
+  category: enterprise
+  type: HDD
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: enterprise-ssd
+provisioner: volume.csi.bizflycloud.vn
+allowVolumeExpansion: true
+parameters:
+  category: enterprise
+  type: SSD

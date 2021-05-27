@@ -20,6 +20,7 @@ spec:
       containers:
         - name: node-driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.2.0
+          imagePullPolicy: "IfNotPresent"
           args:
             - "--csi-address=$(ADDRESS)"
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
@@ -36,7 +37,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -49,6 +49,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:latest
+          imagePullPolicy: "Always"
           args :
             - /bin/csi-bizflycloud
             - "--nodeid=$(NODE_ID)"
@@ -73,7 +74,6 @@ spec:
                 secretKeyRef:
                   name: bizflycloud
                   key: application_credential_secret
-          imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

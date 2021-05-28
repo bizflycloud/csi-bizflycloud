@@ -4,7 +4,7 @@
 
 *Note: Skip this step if you are already installed [BizFly Cloud Controller Manager](https://github.com/bizflycloud/bizfly-cloud-controller-manager)*
 
-Replace the credentials in the `manifest/secret.yaml` as bellow:
+Replace the credentials in the `manifest/plugin/secret.yaml` as bellow:
 
  ```yaml
 apiVersion: v1
@@ -21,7 +21,7 @@ stringData:
 Create Secret in `kube-system` namespace
 
 ```shell script
-kubectl apply -f manifest/secret.yaml
+kubectl apply -f manifest/plugin/secret.yaml
 ```
 
 ## 2. Deploy the CSI Plugin

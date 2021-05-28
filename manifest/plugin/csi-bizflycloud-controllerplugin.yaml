@@ -85,6 +85,7 @@ spec:
             - "--application_credential_id=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID)"
             - "--application_credential_secret=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET)"
             - "--tenant_id=$(BIZFLYCLOUD_TENANT_ID)"
+            - "--region=$(BIZFLYCLOUD_REGION)"
           env:
             - name: NODE_ID
               valueFrom:
@@ -105,6 +106,11 @@ spec:
                 secretKeyRef:
                   name: bizflycloud
                   key: tenant_id
+            - name: BIZFLYCLOUD_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: region
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/

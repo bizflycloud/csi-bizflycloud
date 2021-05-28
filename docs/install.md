@@ -16,6 +16,7 @@ stringData:
   application_credential_id: "your_application_credential_id"
   application_credential_secret: "your_application_credential_secret"
   tenant_id: "your_tenant_id"
+  region: "your_region" # HN, HCM
 ```
 
 Create Secret in `kube-system` namespace

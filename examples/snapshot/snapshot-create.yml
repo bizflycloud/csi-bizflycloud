@@ -1,8 +1,0 @@
-kind: VolumeSnapshot
-metadata:
-  name: new-snapshot-demo
-spec:
-  snapshotClassName: csi-bizflycloud-snapclass
-  source:
-    name: bc-ssd-1
-    kind: PersistentVolumeClaim

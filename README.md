@@ -63,7 +63,7 @@ expand the filesystem if you have formatted the device.
 
 Snapshots can be created and restored through `VolumeSnapshot` objects.
 
-See also [the example](/examples/snapshot).
+See also [Volume Snapshot](/docs/install.md#volume-snapshot).
 
 ## Install BizFly Cloud CSI Driver
 

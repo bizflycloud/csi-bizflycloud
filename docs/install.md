@@ -1,10 +1,10 @@
 # Install BizFly Cloud CSI Driver
 
-## 1. Create secret with your email and password
+## 1. Create secret with your credentials
 
 *Note: Skip this step if you are already installed [BizFly Cloud Controller Manager](https://github.com/bizflycloud/bizfly-cloud-controller-manager)*
 
-Replace the email and password in the `manifest/secret.yaml` as bellow:
+Replace the credentials in the `manifest/plugin/secret.yaml` as bellow:
 
  ```yaml
 apiVersion: v1
@@ -13,14 +13,16 @@ metadata:
   name: bizflycloud
   namespace: kube-system
 stringData:
-  email: "youremail@example.com"
-  password: "yourPassWORD"
+  application_credential_id: "your_application_credential_id"
+  application_credential_secret: "your_application_credential_secret"
+  tenant_id: "your_tenant_id"
+  region: "your_region" # HN, HCM
 ```
 
 Create Secret in `kube-system` namespace
 
 ```shell script
-kubectl apply -f manifest/secret.yaml
+kubectl apply -f manifest/plugin/secret.yaml
 ```
 
 ## 2. Deploy the CSI Plugin
@@ -28,19 +30,30 @@ kubectl apply -f manifest/secret.yaml
 - Create a new CSI Driver
 
 ```shell script
-kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/csi-bizfly-driver.yaml
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/plugin/csi-driver.yaml
 ```
 
-- Add rold binding for `controller plugin` and `node plugin`
+- Add RBAC for `controller plugin` and `node plugin`
 
 ```shell script
-kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/bizfly-csi-controllerplugin-rbac.yaml
-kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/bizfly-csi-nodeplugin-rbac.yaml
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/plugin/csi-bizflycloud-controllerplugin-rbac.yaml
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/plugin/csi-bizflycloud-nodeplugin-rbac.yaml
 ```
 
 - Install CSI Statefulset and Daemonset 
 
 ```shell script
-kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/bizfly-csi-controllerplugin.yaml
-kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/bizfly-csi-nodeplugin.yaml
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/plugin/csi-bizflycloud-controllerplugin.yaml
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/plugin/csi-bizflycloud-nodeplugin.yaml
 ```
+
+# Volume Snapshot
+
+For kubernetes >= v1.17 and <= v1.19, [Beta Volume Snapshot](https://kubernetes.io/blog/2019/12/09/kubernetes-1-17-feature-cis-volume-snapshot-beta/) need manually installed.
+
+```shell script
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/v1beta1_volumesnapshot_crds.yaml
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/examples/v1beta1_volumesnapshot/v1beta1_volumesnapshotclasses.yaml
+```
+
+See also [the example](/examples/v1beta1_volumesnapshot).

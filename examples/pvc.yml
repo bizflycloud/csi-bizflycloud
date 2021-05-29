@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: bc-hdd-1
+  name: demo-pvc
 spec:
   accessModes:
     - ReadWriteOnce
@@ -9,4 +9,4 @@ spec:
   resources:
     requests:
       storage: 50Gi
-  storageClassName: hdd-hn1
+  storageClassName: premium-hdd

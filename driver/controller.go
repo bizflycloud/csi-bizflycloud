@@ -74,7 +74,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	volPVCName := req.GetParameters()["csi.storage.k8s.io/pvc/name"]
 	volPVCNamespace := req.GetParameters()["csi.storage.k8s.io/pvc/namespace"]
-	Description := "bke_pvc_name: " + volPVCName + " ; bke_namespaces: " + volPVCNamespace
+	Description := volPVCNamespace + "/" + volPVCName + " by csi-bizflycloud"
 	client := cs.Client
 
 	// Verify a volume with the provided name doesn't already exist for this tenant

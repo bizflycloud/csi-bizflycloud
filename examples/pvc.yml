@@ -10,3 +10,4 @@ spec:
     requests:
       storage: 50Gi
   storageClassName: premium-hdd
+  

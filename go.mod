@@ -3,7 +3,7 @@ module github.com/bizflycloud/csi-bizflycloud
 go 1.14
 
 require (
-	github.com/bizflycloud/gobizfly v0.0.0-20200925081217-c929a1f56559
+	github.com/bizflycloud/gobizfly v0.0.0-20210826035312-56219bf93eb1
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/protobuf v1.4.1
 	github.com/spf13/cobra v1.0.0

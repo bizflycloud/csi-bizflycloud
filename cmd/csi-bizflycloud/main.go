@@ -158,8 +158,8 @@ func handle() {
 			klog.Errorf("Failed to get bizfly client token: %v", err)
 			return
 		}
-		
-		client.SetKeystoneToken(tok.KeystoneToken)
+
+		client.SetKeystoneToken(tok)
 		d.SetupControlDriver(client, iMount, metadatda)
 		d.Run()
 	} else {

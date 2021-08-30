@@ -72,7 +72,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		// Volume Availability - Default is nova
 		volAvailability = req.GetParameters()["availability"]
 	}
-
+	volPVCName := req.GetParameters()["csi.storage.k8s.io/pvc/name"]
+	volPVCNamespace := req.GetParameters()["csi.storage.k8s.io/pvc/namespace"]
+	Description := volPVCNamespace + "/" + volPVCName + " by csi-bizflycloud"
 	client := cs.Client
 
 	// Verify a volume with the provided name doesn't already exist for this tenant
@@ -106,6 +108,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		AvailabilityZone: volAvailability,
 		SnapshotID:       snapshotID,
 		VolumeCategory:   volCategory,
+		Description:      Description,
 	}
 	vol, err := cs.Client.Volume.Create(ctx, &vcr)
 	if err != nil {
@@ -405,7 +408,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 			return nil, status.Error(codes.Internal, fmt.Sprintf("ListSnapshots get snapshot failed with error %v", err))
 		}
 	} else {
-		vlist, err = cs.Client.Snapshot.List(ctx, &gobizfly.ListOptions{})
+		vlist, err = cs.Client.Snapshot.List(ctx, &gobizfly.ListSnasphotsOptions{})
 		if err != nil {
 			klog.V(3).Infof("Failed to ListSnapshots: %v", err)
 			return nil, status.Error(codes.Internal, fmt.Sprintf("ListSnapshots get snapshot failed with error %v", err))

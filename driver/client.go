@@ -130,7 +130,7 @@ func diskIsAttached(ctx context.Context, client *gobizfly.Client, serverId strin
 }
 
 func GetSnapshotByNameAndVolumeID(ctx context.Context, client *gobizfly.Client, volumeId string, name string) ([]*gobizfly.Snapshot, error) {
-	snapshots, err := client.Snapshot.List(ctx, &gobizfly.ListOptions{})
+	snapshots, err := client.Snapshot.List(ctx, &gobizfly.ListSnasphotsOptions{})
 	if err != nil {
 		return nil, err
 	}

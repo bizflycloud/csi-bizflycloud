@@ -41,6 +41,7 @@ spec:
             - "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock"
             - "--timeout=3m"
             - "--feature-gates=Topology=true"
+            - "--extra-create-metadata=True"
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/

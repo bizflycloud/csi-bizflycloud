@@ -49,11 +49,31 @@ kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/m
 
 # Volume Snapshot
 
-For kubernetes >= v1.17 and <= v1.19, [Beta Volume Snapshot](https://kubernetes.io/blog/2019/12/09/kubernetes-1-17-feature-cis-volume-snapshot-beta/) need manually installed.
+1. CRDs is required to enable VolumeSnapshot
+
+[Beta VolumeSnapshot](https://kubernetes.io/blog/2019/12/09/kubernetes-1-17-feature-cis-volume-snapshot-beta/) since Kubernetes v1.17
 
 ```shell script
 kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/v1beta1_volumesnapshot_crds.yaml
-kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/examples/v1beta1_volumesnapshot/v1beta1_volumesnapshotclasses.yaml
 ```
 
-See also [the example](/examples/v1beta1_volumesnapshot).
+[GA VolumeSnapshot](https://kubernetes.io/blog/2020/12/10/kubernetes-1.20-volume-snapshot-moves-to-ga/) since Kubernetes v1.20
+
+```shell script
+kubectl apply -f https://raw.githubusercontent.com/bizflycloud/csi-bizflycloud/master/manifest/v1_volumesnapshot_crds.yaml
+```
+
+2. VolumeSnapshotClass
+
+```YAML
+# apiVersion: snapshot.storage.k8s.io/v1beta1
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: bizflycloud
+driver: volume.csi.bizflycloud.vn
+deletionPolicy: Delete
+parameters:
+  force-create: "true"
+
+```

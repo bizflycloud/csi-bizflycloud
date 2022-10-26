@@ -536,6 +536,39 @@ func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}, nil
 }
 
+func (cs *controllerServer) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	klog.V(4).Infof("ControllerGetVolume: called with args %+v", *req)
+
+	volumeID := req.GetVolumeId()
+
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
+
+	volume, err := cs.Client.Volume.Get(ctx, volumeID)
+	if err != nil {
+		if errors.Is(err, gobizfly.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "Volume not found")
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
+	}
+
+	ventry := csi.ControllerGetVolumeResponse{
+		Volume: &csi.Volume{
+			VolumeId:      volumeID,
+			CapacityBytes: int64(volume.Size * 1024 * 1024 * 1024),
+		},
+	}
+
+	status := &csi.ControllerGetVolumeResponse_VolumeStatus{}
+	for _, attachment := range volume.Attachments {
+		status.PublishedNodeIds = append(status.PublishedNodeIds, attachment.ServerID)
+	}
+	ventry.Status = status
+
+	return &ventry, nil
+}
+
 func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 	for _, topology := range requirement.GetPreferred() {
 		zone, exists := topology.GetSegments()[topologyKey]

@@ -25,7 +25,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
+	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
 )
@@ -67,11 +67,12 @@ func NewIdentityServer(d *VolumeDriver) *identityServer {
 	}
 }
 
-func NewNodeServer(d *VolumeDriver, mount mount.IMount, metadata openstack.IMetadata) *nodeServer {
+func NewNodeServer(d *VolumeDriver, mount mount.IMount, metadata metadata.IMetadata, client *gobizfly.Client) *nodeServer {
 	return &nodeServer{
 		Driver:   d,
 		Mount:    mount,
 		Metadata: metadata,
+		Client: client,
 	}
 }
 

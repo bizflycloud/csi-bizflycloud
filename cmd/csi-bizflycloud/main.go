@@ -28,7 +28,7 @@ import (
 	"github.com/bizflycloud/gobizfly"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
+	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
@@ -127,43 +127,31 @@ func handle() {
 	d := driver.NewDriver(nodeID, endpoint, cluster)
 
 	// Intiliaze mount
-	iMount, err := mount.GetMountProvider()
-	if err != nil {
-		klog.V(3).Infof("Failed to GetMountProvider: %v", err)
-	}
-
+	iMount := mount.GetMountProvider()
 	//Intiliaze Metadatda
-	metadatda, err := openstack.GetMetadataProvider()
+	metadata := metadata.GetMetadataProvider("metadataService")
+
+	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
 	if err != nil {
-		klog.V(3).Infof("Failed to GetMetadataProvider: %v", err)
+		klog.Errorf("failed to create bizfly client: %v", err)
+		return
+	}
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancelFunc()
+
+	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{
+		AuthMethod:    authMethod,
+		Username:      username,
+		Password:      password,
+		AppCredID:     appCredID,
+		AppCredSecret: appCredSecret})
+
+	if err != nil {
+		klog.Errorf("Failed to get bizfly client token: %v", err)
+		return
 	}
 
-	if isControlPlane {
-		client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
-		if err != nil {
-			klog.Errorf("failed to create bizfly client: %v", err)
-			return
-		}
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancelFunc()
-
-		tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{
-			AuthMethod:    authMethod,
-			Username:      username,
-			Password:      password,
-			AppCredID:     appCredID,
-			AppCredSecret: appCredSecret})
-
-		if err != nil {
-			klog.Errorf("Failed to get bizfly client token: %v", err)
-			return
-		}
-
-		client.SetKeystoneToken(tok)
-		d.SetupControlDriver(client, iMount, metadatda)
-		d.Run()
-	} else {
-		d.SetupNodeDriver(iMount, metadatda)
-		d.Run()
-	}
+	client.SetKeystoneToken(tok)
+	d.SetupDriver(client, iMount, metadata)
+	d.Run()
 }

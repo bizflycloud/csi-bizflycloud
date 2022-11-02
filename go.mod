@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/bizflycloud/gobizfly v0.0.0-20210826035312-56219bf93eb1
-	github.com/container-storage-interface/spec v1.2.0
+	github.com/container-storage-interface/spec v1.5.0
 	github.com/golang/protobuf v1.4.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5

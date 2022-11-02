@@ -22,10 +22,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"errors"
 
-	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,7 +32,6 @@ import (
 	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
-	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	mountutil "k8s.io/mount-utils"
 	utilpath "k8s.io/utils/path"
 )
@@ -42,7 +40,6 @@ type nodeServer struct {
 	Driver   *VolumeDriver
 	Mount    mount.IMount
 	Metadata metadata.IMetadata
-	Client   *gobizfly.Client
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -67,13 +64,6 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// In case of ephemeral volume staging path not provided
 	if len(source) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume Staging Target Path must be provided")
-	}
-	_, err := ns.Client.Volume.Get(ctx, volumeID)
-	if err != nil {
-		if errors.Is(err, gobizfly.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "Volume not found")
-		}
-		return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
 	}
 
 	mountOptions := []string{"bind"}
@@ -163,25 +153,6 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume volumeID must be provided")
 	}
 
-	if _, err := ns.Client.Volume.Get(ctx, volumeID); err != nil {
-		if errors.Is(err, gobizfly.ErrNotFound) {
-			return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
-		}
-
-		// if not found by id, try to search by name
-		volName := fmt.Sprintf("ephemeral-%s", volumeID)
-
-		vol, err := GetVolumesByName(ctx, ns.Client, volName)
-
-		//if volume not found then GetVolumesByName returns empty list
-		if err != nil {
-			return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
-		}
-		if vol == nil {
-			return nil, status.Error(codes.NotFound, fmt.Sprintf("Volume not found %s", volName))
-		}
-	}
-
 	err := ns.Mount.UnmountPath(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -206,14 +177,6 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	if volumeCapability == nil {
 		return nil, status.Error(codes.InvalidArgument, "NodeStageVolume Volume Capability must be provided")
-	}
-
-	_, err := ns.Client.Volume.Get(ctx, volumeID)
-	if err != nil {
-		if errors.Is(err, gobizfly.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "Volume not found")
-		}
-		return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
 	}
 
 	m := ns.Mount
@@ -269,16 +232,8 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.InvalidArgument, "NodeUnstageVolume Staging Target Path must be provided")
 	}
 
-	_, err := ns.Client.Volume.Get(ctx, volumeID)
-	if err != nil {
-		if errors.Is(err, gobizfly.ErrNotFound) {
-			klog.V(4).Infof("NodeUnstageVolume: Unable to find volume: %v", err)
-			return nil, status.Error(codes.NotFound, "Volume not found")
-		}
-		return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
-	}
 
-	err = ns.Mount.UnmountPath(stagingTargetPath)
+	err := ns.Mount.UnmountPath(stagingTargetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

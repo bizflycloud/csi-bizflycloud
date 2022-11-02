@@ -129,29 +129,34 @@ func handle() {
 	// Intiliaze mount
 	iMount := mount.GetMountProvider()
 	//Intiliaze Metadatda
-	metadata := metadata.GetMetadataProvider("metadataService")
+	metadataProvider := metadata.GetMetadataProvider("metadataService")
+	if isControlPlane {
+		client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
+		if err != nil {
+			klog.Errorf("failed to create bizfly client: %v", err)
+			return
+		}
+		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancelFunc()
 
-	client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
-	if err != nil {
-		klog.Errorf("failed to create bizfly client: %v", err)
-		return
+		tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{
+			AuthMethod:    authMethod,
+			Username:      username,
+			Password:      password,
+			AppCredID:     appCredID,
+			AppCredSecret: appCredSecret})
+
+		if err != nil {
+			klog.Errorf("Failed to get bizfly client token: %v", err)
+			return
+		}
+
+		client.SetKeystoneToken(tok)
+		d.SetupControlDriver(client, iMount, metadataProvider)
+		d.Run()
+	} else {
+		d.SetupNodeDriver(iMount, metadataProvider)
+		d.Run()
 	}
-	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancelFunc()
 
-	tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{
-		AuthMethod:    authMethod,
-		Username:      username,
-		Password:      password,
-		AppCredID:     appCredID,
-		AppCredSecret: appCredSecret})
-
-	if err != nil {
-		klog.Errorf("Failed to get bizfly client token: %v", err)
-		return
-	}
-
-	client.SetKeystoneToken(tok)
-	d.SetupDriver(client, iMount, metadata)
-	d.Run()
 }

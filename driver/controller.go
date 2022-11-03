@@ -30,7 +30,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/cloud-provider-openstack/pkg/volume/util"
+	"k8s.io/cloud-provider-openstack/pkg/util"
 	"k8s.io/klog"
 )
 

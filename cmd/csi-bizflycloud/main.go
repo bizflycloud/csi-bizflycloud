@@ -28,7 +28,7 @@ import (
 	"github.com/bizflycloud/gobizfly"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
+	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
@@ -127,17 +127,9 @@ func handle() {
 	d := driver.NewDriver(nodeID, endpoint, cluster)
 
 	// Intiliaze mount
-	iMount, err := mount.GetMountProvider()
-	if err != nil {
-		klog.V(3).Infof("Failed to GetMountProvider: %v", err)
-	}
-
+	iMount := mount.GetMountProvider()
 	//Intiliaze Metadatda
-	metadatda, err := openstack.GetMetadataProvider()
-	if err != nil {
-		klog.V(3).Infof("Failed to GetMetadataProvider: %v", err)
-	}
-
+	metadataProvider := metadata.GetMetadataProvider("metadataService")
 	if isControlPlane {
 		client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
 		if err != nil {
@@ -160,10 +152,11 @@ func handle() {
 		}
 
 		client.SetKeystoneToken(tok)
-		d.SetupControlDriver(client, iMount, metadatda)
+		d.SetupControlDriver(client, iMount, metadataProvider)
 		d.Run()
 	} else {
-		d.SetupNodeDriver(iMount, metadatda)
+		d.SetupNodeDriver(iMount, metadataProvider)
 		d.Run()
 	}
+
 }

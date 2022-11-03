@@ -20,7 +20,7 @@ package driver
 import (
 	"github.com/bizflycloud/gobizfly"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/cloud-provider-openstack/pkg/csi/cinder/openstack"
+	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
 	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/klog"
 )
@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	version = "0.1"
+	version = "0.2"
 )
 
 type VolumeDriver struct {
@@ -77,7 +77,7 @@ func NewDriver(nodeID, endpoint, cluster string) *VolumeDriver {
 		[]csi.NodeServiceCapability_RPC_Type{
 			csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 			csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
-			//csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+			csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 		})
 
 	return d
@@ -116,13 +116,13 @@ func (d *VolumeDriver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability
 }
 
 // SetupControlDriver setups driver for control plane
-func (d *VolumeDriver) SetupControlDriver(client *gobizfly.Client, mount mount.IMount, metadata openstack.IMetadata) {
+func (d *VolumeDriver) SetupControlDriver(client *gobizfly.Client, mount mount.IMount, metadata metadata.IMetadata) {
 	d.ids = NewIdentityServer(d)
 	d.cs = NewControllerServer(d, client)
 }
 
 // SetupControlDriver setups driver for control plane
-func (d *VolumeDriver) SetupNodeDriver(mount mount.IMount, metadata openstack.IMetadata) {
+func (d *VolumeDriver) SetupNodeDriver(mount mount.IMount, metadata metadata.IMetadata) {
 	d.ids = NewIdentityServer(d)
 	d.ns = NewNodeServer(d, mount, metadata)
 }

@@ -36,7 +36,6 @@ var (
 
 type VolumeDriver struct {
 	name     string
-	nodeID   string
 	version  string
 	endpoint string
 	cluster  string
@@ -51,12 +50,11 @@ type VolumeDriver struct {
 }
 
 // NewDriver create new driver
-func NewDriver(nodeID, endpoint, cluster string) *VolumeDriver {
+func NewDriver(endpoint, cluster string) *VolumeDriver {
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	d := &VolumeDriver{}
 	d.name = driverName
-	d.nodeID = nodeID
 	d.version = version
 	d.endpoint = endpoint
 	d.cluster = cluster

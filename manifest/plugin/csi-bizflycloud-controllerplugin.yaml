@@ -78,7 +78,6 @@ spec:
           imagePullPolicy: "Always"
           args :
             - /bin/csi-bizflycloud
-            - "--nodeid=$(NODE_ID)"
             - "--endpoint=unix:///var/lib/csi/sockets/pluginproxy/csi.sock"
             - "--cluster=kubernetes"
             - "--is_control_plane=true"
@@ -88,10 +87,6 @@ spec:
             - "--tenant_id=$(BIZFLYCLOUD_TENANT_ID)"
             - "--region=$(BIZFLYCLOUD_REGION)"
           env:
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
             - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID
               valueFrom:
                 secretKeyRef:

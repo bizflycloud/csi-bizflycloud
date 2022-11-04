@@ -36,7 +36,6 @@ import (
 
 var (
 	endpoint       string
-	nodeID         string
 	authMethod     string
 	username       string
 	password       string
@@ -86,7 +85,7 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
 	cmd.PersistentFlags().StringVar(&nodeID, "nodeid", "", "node id")
-	cmd.MarkPersistentFlagRequired("nodeid")
+	cmd.PersistentFlags().MarkDeprecated("nodeid", "This flag would be removed in future. Currently, the value is ignored by the driver")
 
 	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
 	cmd.MarkPersistentFlagRequired("endpoint")
@@ -124,7 +123,7 @@ func main() {
 
 func handle() {
 
-	d := driver.NewDriver(nodeID, endpoint, cluster)
+	d := driver.NewDriver(endpoint, cluster)
 
 	// Intiliaze mount
 	iMount := mount.GetMountProvider()

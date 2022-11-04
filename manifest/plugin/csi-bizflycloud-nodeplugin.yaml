@@ -52,13 +52,8 @@ spec:
           imagePullPolicy: "Always"
           args :
             - /bin/csi-bizflycloud
-            - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
           env:
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
           volumeMounts:

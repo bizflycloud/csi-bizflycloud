@@ -20,7 +20,6 @@ package driver
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"time"
 
@@ -34,16 +33,7 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
-	PVCNameKey = "csi.storage.k8s.io/pvc/name"
-	PVCNamespaceKey = "csi.storage.k8s.io/pvc/namespace"
-)
-
-var (
-	volPVCName	string
-	volPVCNamespace string
-)
+const RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
 
 type controllerServer struct {
 	Driver *VolumeDriver
@@ -83,15 +73,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		volAvailability = req.GetParameters()["availability"]
 	}
 
-	for key, value := range req.GetParameters() {
-		switch strings.ToLower(key) {
-		case PVCNameKey:
-			volPVCName = value
-		case PVCNamespaceKey:
-			volPVCNamespace = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid parameter key %s for CreateVolume", key)
-		}
+	volPVCName, ok := req.GetParameters()["csi.storage.k8s.io/pvc/name"]
+	if !ok {
+		volPVCName = "unknown"
+	}
+	volPVCNamespace, ok := req.GetParameters()["csi.storage.k8s.io/pvc/namespace"]
+	if !ok {
+		volPVCNamespace = "unknown"
 	}
 
 	Description := volPVCNamespace + "/" + volPVCName + " by csi-bizflycloud"

@@ -36,6 +36,7 @@ import (
 
 var (
 	endpoint       string
+	nodeID         string
 	authMethod     string
 	username       string
 	password       string

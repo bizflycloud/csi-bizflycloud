@@ -74,7 +74,7 @@ spec:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
         - name: bizflycloud-csi-plugin
-          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:v0.1.2
+          image: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud:v0.3.0
           imagePullPolicy: "Always"
           args :
             - /bin/csi-bizflycloud

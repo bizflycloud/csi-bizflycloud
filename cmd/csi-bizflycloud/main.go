@@ -131,7 +131,7 @@ func handle() {
 	//Intiliaze Metadatda
 	metadataProvider := metadata.GetMetadataProvider("metadataService")
 	if isControlPlane {
-		client, err := gobizfly.NewClient(gobizfly.WithTenantName(username), gobizfly.WithAPIUrl(apiUrl), gobizfly.WithTenantID(tenantID), gobizfly.WithRegionName(region))
+		client, err := gobizfly.NewClient(gobizfly.WithAPIUrl(apiUrl), gobizfly.WithProjectId(tenantID), gobizfly.WithRegionName(region))
 		if err != nil {
 			klog.Errorf("failed to create bizfly client: %v", err)
 			return

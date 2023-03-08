@@ -263,7 +263,7 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 }
 
 func (cs *controllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	vlist, err := cs.Client.Volume.List(ctx, &gobizfly.ListOptions{})
+	vlist, err := cs.Client.Volume.List(ctx, &gobizfly.VolumeListOptions{})
 	if err != nil {
 		klog.V(3).Infof("Failed to ListVolumes: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ListVolumes failed with error %v", err))

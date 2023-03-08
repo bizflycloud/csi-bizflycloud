@@ -41,7 +41,7 @@ const (
 
 // GetVolumesByName gets volumes by name of volume
 func GetVolumesByName(ctx context.Context, client *gobizfly.Client, name string) (*gobizfly.Volume, error) {
-	volumes, err := client.Volume.List(ctx, &gobizfly.ListOptions{})
+	volumes, err := client.Volume.List(ctx, &gobizfly.VolumeListOptions{})
 	if err != nil {
 		return nil, err
 	}

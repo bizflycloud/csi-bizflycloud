@@ -139,7 +139,7 @@ func handle() {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancelFunc()
 
-		tok, err := client.Token.Create(ctx, &gobizfly.TokenCreateRequest{
+		tok, err := client.Token.Init(ctx, &gobizfly.TokenCreateRequest{
 			AuthMethod:    authMethod,
 			Username:      username,
 			Password:      password,

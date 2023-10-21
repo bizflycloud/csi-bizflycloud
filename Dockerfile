@@ -7,9 +7,9 @@ WORKDIR /app
 ADD . /app
 RUN cd /app && GO111MODULE=on GOARCH=amd64 go build -o csi-bizflycloud cmd/csi-bizflycloud/main.go
 
-FROM k8s.gcr.io/debian-base-amd64:1.0.0
+FROM amd64/debian:stable
 
-RUN clean-install ca-certificates e2fsprogs mount xfsprogs udev
+RUN apt update && apt install ca-certificates e2fsprogs mount xfsprogs udev -y
 
 COPY --from=build-env /app/csi-bizflycloud /bin/
 

@@ -232,7 +232,6 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.InvalidArgument, "NodeUnstageVolume Staging Target Path must be provided")
 	}
 
-
 	err := ns.Mount.UnmountPath(stagingTargetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -253,7 +252,7 @@ func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReque
 	}
 	topology := &csi.Topology{Segments: map[string]string{topologyKey: zone}}
 
-	maxVolume := int64(256)
+	maxVolume := int64(20)
 
 	return &csi.NodeGetInfoResponse{
 		NodeId:             nodeID,

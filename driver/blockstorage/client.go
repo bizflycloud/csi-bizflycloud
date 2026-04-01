@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package driver
+package blockstorage
 
 import (
 	"context"
@@ -41,7 +41,7 @@ const (
 
 // GetVolumesByName gets volumes by name of volume
 func GetVolumesByName(ctx context.Context, client *gobizfly.Client, name string) (*gobizfly.Volume, error) {
-	volumes, err := client.Volume.List(ctx, &gobizfly.VolumeListOptions{})
+	volumes, err := client.CloudServer.Volumes().List(ctx, &gobizfly.VolumeListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func GetVolumesByName(ctx context.Context, client *gobizfly.Client, name string)
 
 // GetAttachmentDiskPath gets disk path in a server
 func GetAttachmentDiskPath(ctx context.Context, client *gobizfly.Client, serverID string, volumeID string) (string, error) {
-	volume, err := client.Volume.Get(ctx, volumeID)
+	volume, err := client.CloudServer.Volumes().Get(ctx, volumeID)
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +117,7 @@ func WaitDiskDetached(ctx context.Context, client *gobizfly.Client, serverId str
 }
 
 func diskIsAttached(ctx context.Context, client *gobizfly.Client, serverId string, volumeID string) (bool, error) {
-	volume, err := client.Volume.Get(ctx, volumeID)
+	volume, err := client.CloudServer.Volumes().Get(ctx, volumeID)
 	if err != nil {
 		return false, err
 	}
@@ -130,14 +130,14 @@ func diskIsAttached(ctx context.Context, client *gobizfly.Client, serverId strin
 }
 
 func GetSnapshotByNameAndVolumeID(ctx context.Context, client *gobizfly.Client, volumeId string, name string) ([]*gobizfly.Snapshot, error) {
-	snapshots, err := client.Snapshot.List(ctx, &gobizfly.ListSnasphotsOptions{})
+	snapshots, err := client.CloudServer.Snapshots().List(ctx, &gobizfly.ListSnasphotsOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	snaps := make([]*gobizfly.Snapshot, 0, len(snapshots))
 	for _, s := range snapshots {
-		if s.VolumeId == volumeId && s.Name == name {
+		if s.VolumeID == volumeId && s.Name == name {
 			snaps = append(snaps, s)
 		}
 	}
@@ -152,11 +152,11 @@ func WaitSnapshotReady(ctx context.Context, client *gobizfly.Client, snapshotID 
 	}
 
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		snap, err := client.Snapshot.Get(ctx, snapshotID)
+		snapshot, err := client.CloudServer.Snapshots().Get(ctx, snapshotID)
 		if err != nil {
 			return false, err
 		}
-		return snap.Status == snapshotAvailableStatus, nil
+		return snapshot.Status == snapshotAvailableStatus, nil
 	})
 
 	if errors.Is(err, wait.ErrWaitTimeout) {

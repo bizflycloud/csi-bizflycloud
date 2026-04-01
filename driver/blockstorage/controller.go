@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package driver
+package blockstorage
 
 import (
 	"errors"
@@ -118,7 +118,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		VolumeCategory:   volCategory,
 		Description:      Description,
 	}
-	vol, err := cs.Client.Volume.Create(ctx, &vcr)
+	vol, err := cs.Client.CloudServer.Volumes().Create(ctx, &vcr)
 	if err != nil {
 		klog.V(3).Infof("Failed to CreateVolume: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("CreateVolume failed with error %v", err))
@@ -137,7 +137,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, "DeleteVolume Volume ID must be provided")
 	}
 
-	err := cs.Client.Volume.Delete(ctx, volID)
+	err := cs.Client.CloudServer.Volumes().Delete(ctx, volID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			klog.V(3).Infof("Volume %s is already deleted.", volID)
@@ -165,7 +165,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.InvalidArgument, "ControllerPublishVolume Instance ID must be provided")
 	}
 
-	_, err := cs.Client.Volume.Get(ctx, volumeID)
+	_, err := cs.Client.CloudServer.Volumes().Get(ctx, volumeID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "ControllerPublishVolume Volume not found")
@@ -173,7 +173,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume get volume failed with error %v", err))
 	}
 
-	svr, err := cs.Client.Server.Get(ctx, instanceID)
+	svr, err := cs.Client.CloudServer.Get(ctx, instanceID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "ControllerPublishVolume Instance not found")
@@ -186,7 +186,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		goto publishVolume
 	}
 
-	_, err = cs.Client.Volume.Attach(ctx, volumeID, instanceID)
+	_, err = cs.Client.CloudServer.Volumes().Attach(ctx, volumeID, instanceID)
 	if err != nil {
 		klog.V(3).Infof("Failed to AttachVolume: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ControllerPublishVolume Attach Volume failed with error %v", err))
@@ -223,7 +223,7 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "ControllerUnpublishVolume Volume ID must be provided")
 	}
-	server, err := cs.Client.Server.Get(ctx, instanceID)
+	server, err := cs.Client.CloudServer.Get(ctx, instanceID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because node %s does not exist", volumeID, instanceID)
@@ -237,7 +237,7 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
 
-	_, err = cs.Client.Volume.Detach(ctx, volumeID, instanceID)
+	_, err = cs.Client.CloudServer.Volumes().Detach(ctx, volumeID, instanceID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			klog.V(3).Infof("ControllerUnpublishVolume assuming volume %s is detached, because it does not exist", volumeID)
@@ -263,7 +263,7 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 }
 
 func (cs *controllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	vlist, err := cs.Client.Volume.List(ctx, &gobizfly.VolumeListOptions{})
+	vlist, err := cs.Client.CloudServer.Volumes().List(ctx, &gobizfly.VolumeListOptions{})
 	if err != nil {
 		klog.V(3).Infof("Failed to ListVolumes: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("ListVolumes failed with error %v", err))
@@ -306,7 +306,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	if len(snapshots) == 1 {
 		snap = snapshots[0]
 
-		if snap.VolumeId != volumeId {
+		if snap.VolumeID != volumeId {
 			return nil, status.Error(codes.AlreadyExists, "Snapshot with given name already exists, with different source volume ID")
 		}
 
@@ -319,10 +319,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	} else {
 		scr := gobizfly.SnapshotCreateRequest{
 			Name:     name,
-			VolumeId: volumeId,
+			VolumeID: volumeId,
 			Force:    true,
 		}
-		snap, err = cs.Client.Snapshot.Create(ctx, &scr)
+		snap, err = cs.Client.CloudServer.Snapshots().Create(ctx, &scr)
 		if err != nil {
 			klog.V(3).Infof("Failed to Create snapshot: %v", err)
 			return nil, status.Error(codes.Internal, fmt.Sprintf("CreateSnapshot failed with error %v", err))
@@ -337,7 +337,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		klog.Errorf("Error to convert time to timestamp: %v", err)
 	}
 
-	err = WaitSnapshotReady(ctx, cs.Client, snap.Id)
+	err = WaitSnapshotReady(ctx, cs.Client, snap.ID)
 	if err != nil {
 		klog.V(3).Infof("Failed to WaitSnapshotReady: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("CreateSnapshot failed with error %v", err))
@@ -345,9 +345,9 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
-			SnapshotId:     snap.Id,
+			SnapshotId:     snap.ID,
 			SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
-			SourceVolumeId: snap.VolumeId,
+			SourceVolumeId: snap.VolumeID,
 			CreationTime:   ctime,
 			ReadyToUse:     true,
 		},
@@ -362,7 +362,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Error(codes.InvalidArgument, "Snapshot ID must be provided in DeleteSnapshot request")
 	}
 
-	err := cs.Client.Snapshot.Delete(ctx, id)
+	err := cs.Client.CloudServer.Snapshots().Delete(ctx, id)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			klog.V(3).Infof("Snapshot %s is already deleted.", id)
@@ -377,7 +377,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 
 	if len(req.GetSnapshotId()) != 0 {
-		snap, err := cs.Client.Snapshot.Get(ctx, req.SnapshotId)
+		snap, err := cs.Client.CloudServer.Snapshots().Get(ctx, req.SnapshotId)
 		if err != nil {
 			klog.V(3).Infof("Failed to Get snapshot: %v", err)
 			return &csi.ListSnapshotsResponse{}, nil
@@ -392,8 +392,8 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		entry := &csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      int64(snap.Size * 1024 * 1024 * 1024),
-				SnapshotId:     snap.Id,
-				SourceVolumeId: snap.VolumeId,
+				SnapshotId:     snap.ID,
+				SourceVolumeId: snap.VolumeID,
 				CreationTime:   ctime,
 				ReadyToUse:     true,
 			},
@@ -416,7 +416,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 			return nil, status.Error(codes.Internal, fmt.Sprintf("ListSnapshots get snapshot failed with error %v", err))
 		}
 	} else {
-		vlist, err = cs.Client.Snapshot.List(ctx, &gobizfly.ListSnasphotsOptions{})
+		vlist, err = cs.Client.CloudServer.Snapshots().List(ctx, &gobizfly.ListSnasphotsOptions{})
 		if err != nil {
 			klog.V(3).Infof("Failed to ListSnapshots: %v", err)
 			return nil, status.Error(codes.Internal, fmt.Sprintf("ListSnapshots get snapshot failed with error %v", err))
@@ -436,8 +436,8 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		ventry := csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      int64(v.Size * 1024 * 1024 * 1024),
-				SnapshotId:     v.Id,
-				SourceVolumeId: v.VolumeId,
+				SnapshotId:     v.ID,
+				SourceVolumeId: v.VolumeID,
 				CreationTime:   ctime,
 				ReadyToUse:     true,
 			},
@@ -471,7 +471,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "ValidateVolumeCapabilities Volume ID must be provided")
 	}
 
-	_, err := cs.Client.Volume.Get(ctx, volumeID)
+	_, err := cs.Client.CloudServer.Volumes().Get(ctx, volumeID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, fmt.Sprintf("ValidateVolumeCapabiltites Volume %s not found", volumeID))
@@ -523,7 +523,7 @@ func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.OutOfRange, "After round-up, volume size exceeds the limit specified")
 	}
 
-	_, err := cs.Client.Volume.Get(ctx, volumeID)
+	_, err := cs.Client.CloudServer.Volumes().Get(ctx, volumeID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "Volume not found")
@@ -531,7 +531,7 @@ func (cs *controllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.Internal, fmt.Sprintf("GetVolume failed with error %v", err))
 	}
 
-	_, err = cs.Client.Volume.ExtendVolume(ctx, volumeID, volSizeGB)
+	_, err = cs.Client.CloudServer.Volumes().ExtendVolume(ctx, volumeID, volSizeGB)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Could not resize volume %q to size %v: %v", volumeID, volSizeGB, err))
 	}
@@ -553,7 +553,7 @@ func (cs *controllerServer) ControllerGetVolume(ctx context.Context, req *csi.Co
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
 	}
 
-	volume, err := cs.Client.Volume.Get(ctx, volumeID)
+	volume, err := cs.Client.CloudServer.Volumes().Get(ctx, volumeID)
 	if err != nil {
 		if errors.Is(err, gobizfly.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "Volume not found")

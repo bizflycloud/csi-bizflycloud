@@ -1,0 +1,114 @@
+# File Storage CSI Controller Plugin
+# Runs as a StatefulSet with:
+#   - csi-provisioner (creates PV from PVC)
+#   - csi-resizer (handles volume expansion)
+#   - csi-fs-bizflycloud (our driver - controller mode)
+#
+# NOTE: No csi-attacher needed! NFS doesn't require controller attach/detach.
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-fs-bizflycloud-controller-service
+  namespace: kube-system
+  labels:
+    app: csi-fs-bizflycloud-controllerplugin
+spec:
+  selector:
+    app: csi-fs-bizflycloud-controllerplugin
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-fs-bizflycloud-controllerplugin
+  namespace: kube-system
+spec:
+  serviceName: "csi-fs-bizflycloud-controller-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-fs-bizflycloud-controllerplugin
+  template:
+    metadata:
+      labels:
+        app: csi-fs-bizflycloud-controllerplugin
+    spec:
+      serviceAccount: csi-fs-bizflycloud-controller-sa
+      containers:
+        # CSI Provisioner sidecar
+        - name: csi-provisioner
+          image: registry.k8s.io/sig-storage/csi-provisioner:v3.5.0
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock"
+            - "--timeout=3m"
+            - "--feature-gates=Topology=true"
+            - "--extra-create-metadata=true"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        # CSI Resizer sidecar (for volume expansion)
+        - name: csi-resizer
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.8.0
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        # Our file storage CSI driver (controller mode)
+        - name: fs-csi-plugin
+          image: cr-hn-1.bizflycloud.vn/cecd854937c8421b81d1d73789acad52/csi-fs-bizflycloud:v0.2.0
+          imagePullPolicy: "Always"
+          args:
+            - /bin/csi-fs-bizflycloud
+            - "--endpoint=unix:///var/lib/csi/sockets/pluginproxy/csi.sock"
+            - "--fwdendpoint=unix:///var/lib/kubelet/plugins/csi-nfsplugin/csi.sock"
+            - "--share-protocol-selector=NFS"
+            - "--provide-controller-service=true"
+            - "--provide-node-service=false"
+            - "--cluster=kubernetes"
+            - "--auth_method=application_credential"
+            - "--application_credential_id=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID)"
+            - "--application_credential_secret=$(BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET)"
+            - "--tenant_id=$(BIZFLYCLOUD_TENANT_ID)"
+            - "--region=$(BIZFLYCLOUD_REGION)"
+            - "--api_url=$(BIZFLYCLOUD_API_URL)"
+          env:
+            - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: application_credential_id
+            - name: BIZFLYCLOUD_APPLICATION_CREDENTIAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: application_credential_secret
+            - name: BIZFLYCLOUD_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: tenant_id
+            - name: BIZFLYCLOUD_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: region
+            - name: BIZFLYCLOUD_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bizflycloud
+                  key: api_url
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      volumes:
+        - name: socket-dir
+          emptyDir:

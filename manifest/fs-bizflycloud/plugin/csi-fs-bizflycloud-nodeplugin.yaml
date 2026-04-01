@@ -1,0 +1,107 @@
+# File Storage CSI Node Plugin
+# Runs as a DaemonSet on every node.
+# This is the proxy that forwards mount RPCs to the NFS CSI driver.
+#
+# IMPORTANT: This requires csi-driver-nfs to be deployed on the cluster first!
+# Install it with: helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs --namespace kube-system
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-fs-bizflycloud-nodeplugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-fs-bizflycloud-nodeplugin
+  template:
+    metadata:
+      labels:
+        app: csi-fs-bizflycloud-nodeplugin
+    spec:
+      serviceAccount: csi-fs-bizflycloud-node-sa
+      hostNetwork: true
+      containers:
+        # Node Driver Registrar - registers our CSI driver with kubelet
+        - name: node-driver-registrar
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.8.0
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/fs.csi.bizflycloud.vn /registration/fs.csi.bizflycloud.vn-reg.sock"]
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/fs.csi.bizflycloud.vn/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+
+        # Our file storage CSI driver (node mode - proxy)
+        - name: fs-csi-plugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: cr-hn-1.bizflycloud.vn/cecd854937c8421b81d1d73789acad52/csi-fs-bizflycloud:v0.2.0
+          imagePullPolicy: "Always"
+          args:
+            - /bin/csi-fs-bizflycloud
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--fwdendpoint=$(FWD_CSI_ENDPOINT)"
+            - "--share-protocol-selector=NFS"
+            - "--provide-controller-service=false"
+            - "--provide-node-service=true"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix://csi/csi.sock
+            - name: FWD_CSI_ENDPOINT
+              # This points to the NFS CSI node plugin socket
+              # Default path for csi-driver-nfs
+              value: unix:///csi-nfs/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - name: pods-cloud-data
+              mountPath: /var/lib/cloud/data
+              readOnly: true
+            # Mount the NFS CSI driver socket so we can forward RPCs to it
+            - name: nfs-csi-socket-dir
+              mountPath: /csi-nfs
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/fs.csi.bizflycloud.vn
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: pods-cloud-data
+          hostPath:
+            path: /var/lib/cloud/data
+            type: Directory
+        # NFS CSI driver socket directory - adjust path based on your csi-driver-nfs installation
+        - name: nfs-csi-socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfsplugin
+            type: Directory

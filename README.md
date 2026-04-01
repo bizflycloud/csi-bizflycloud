@@ -1,14 +1,18 @@
-# BizFly Cloud Volume CSI driver for Kubernetes
+# BizFly Cloud CSI Drivers for Kubernetes
 
-A Container Storage Interface (CSI) Driver for BizFlyCloud Block Storage
+A set of Container Storage Interface (CSI) Drivers for BizFly Cloud Storage products.
 
 ## About 
 
-This driver allows Kubernetes to use BizFly Volume, csi plugin name `volume.csi.bizflycloud.vn`
+This repository allows Kubernetes to provision and manage BizFly Cloud volumes via two distinct CSI plugins:
+1. **BizFly Cloud Block Storage** - `volume.csi.bizflycloud.vn` (RWO capability)
+2. **BizFly Cloud File Storage** - `fs.csi.bizflycloud.vn` (RWX capability for shared access)
 
 ## Features
 
-Below is a list of functionality implemented by the plugin. In general, [CSI features](https://kubernetes-csi.github.io/docs/features.html) implementing an aspect of the [specification](https://github.com/container-storage-interface/spec/blob/master/spec.md) are available on any BizFly Cloud Kubernetes version for which beta support for the feature is provided.
+Below is a list of functionality implemented by the plugins. In general, [CSI features](https://kubernetes-csi.github.io/docs/features.html) implementing an aspect of the [specification](https://github.com/container-storage-interface/spec/blob/master/spec.md) are available on any BizFly Cloud Kubernetes version for which beta support for the feature is provided.
+
+For File Storage (NFS-backed Shared Storage), the driver specifically supports **ReadWriteMany (RWX)**. This means multiple Pods can concurrently read and write to the same volume.
 
 See also the [project examples](/examples) for use cases.
 

@@ -5,7 +5,7 @@ go 1.24
 toolchain go1.24.1
 
 require (
-	github.com/bizflycloud/gobizfly v1.1.31-0.20260401044644-166caf18de58
+	github.com/bizflycloud/gobizfly v1.1.31-0.20260401104135-46c4ecc5020b
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

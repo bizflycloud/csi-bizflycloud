@@ -1,6 +1,6 @@
 // This file is part of csi-bizflycloud
 //
-// Copyright (C) 2020  BizFly Cloud
+// Copyright (C) 2020  Bizfly Cloud
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -58,8 +58,8 @@ func main() {
 	flag.CommandLine.Parse([]string{})
 
 	cmd := &cobra.Command{
-		Use:   "BizFlyCloudVolumeDriver",
-		Short: "CSI based BizFly Cloud Volume driver",
+		Use:   "BizflyCloudVolumeDriver",
+		Short: "CSI based Bizfly Cloud Volume driver",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Glog requires this otherwise it complains.
 			flag.CommandLine.Parse(nil)
@@ -95,21 +95,21 @@ func main() {
 
 	cmd.PersistentFlags().StringVar(&authMethod, "auth_method", "password", "Authentication method")
 
-	cmd.PersistentFlags().StringVar(&username, "username", "", "BizFly Cloud username")
+	cmd.PersistentFlags().StringVar(&username, "username", "", "Bizfly Cloud username")
 
-	cmd.PersistentFlags().StringVar(&password, "password", "", "BizFly Cloud password")
+	cmd.PersistentFlags().StringVar(&password, "password", "", "Bizfly Cloud password")
 
-	cmd.PersistentFlags().StringVar(&appCredID, "application_credential_id", "", "BizFly Cloud Application Credential ID")
+	cmd.PersistentFlags().StringVar(&appCredID, "application_credential_id", "", "Bizfly Cloud Application Credential ID")
 
-	cmd.PersistentFlags().StringVar(&appCredSecret, "application_credential_secret", "", "BizFly Cloud Application Credential Secret")
+	cmd.PersistentFlags().StringVar(&appCredSecret, "application_credential_secret", "", "Bizfly Cloud Application Credential Secret")
 
-	cmd.PersistentFlags().StringVar(&tenantID, "tenant_id", "", "BizFly Cloud Tenant ID")
+	cmd.PersistentFlags().StringVar(&tenantID, "tenant_id", "", "Bizfly Cloud Tenant ID")
 
-	cmd.PersistentFlags().StringVar(&apiUrl, "api_url", "https://manage.bizflycloud.vn", "BizFly Cloud API URL")
+	cmd.PersistentFlags().StringVar(&apiUrl, "api_url", "https://manage.bizflycloud.vn", "Bizfly Cloud API URL")
 
 	cmd.PersistentFlags().StringVar(&cluster, "cluster", "", "The identifier of the cluster that the plugin is running in.")
 
-	cmd.PersistentFlags().StringVar(&region, "region", "HN", "BizFly Cloud Region Name. Available: HN and HCM")
+	cmd.PersistentFlags().StringVar(&region, "region", "HaNoi", "Bizfly Cloud Region Name. Available: HaNoi and HoChiMinh")
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
@@ -133,7 +133,7 @@ func handle() {
 	if isControlPlane {
 		client, err := gobizfly.NewClient(gobizfly.WithAPIURL(apiUrl), gobizfly.WithProjectID(tenantID), gobizfly.WithRegionName(region))
 		if err != nil {
-			klog.Errorf("failed to create bizfly client: %v", err)
+			klog.Errorf("Failed to create Bizfly Cloud client: %v", err)
 			return
 		}
 		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
@@ -147,7 +147,7 @@ func handle() {
 			AppCredSecret: appCredSecret})
 
 		if err != nil {
-			klog.Errorf("Failed to get bizfly client token: %v", err)
+			klog.Errorf("Failed to authenticate with Bizfly Cloud: %v", err)
 			return
 		}
 

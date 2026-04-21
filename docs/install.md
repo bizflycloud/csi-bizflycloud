@@ -1,8 +1,8 @@
-# Install BizFly Cloud CSI Driver
+# Install Bizfly Cloud CSI Driver
 
 ## 1. Create secret with your credentials
 
-*Note: Skip this step if you are already installed [BizFly Cloud Controller Manager](https://github.com/bizflycloud/bizfly-cloud-controller-manager)*
+*Note: Skip this step if you are already installed [Bizfly Cloud Controller Manager](https://github.com/bizflycloud/bizfly-cloud-controller-manager)*
 
 Replace the credentials in the `manifest/plugin/secret.yaml` as bellow:
 
@@ -16,7 +16,7 @@ stringData:
   application_credential_id: "your_application_credential_id"
   application_credential_secret: "your_application_credential_secret"
   tenant_id: "your_tenant_id"
-  region: "your_region" # HN, HCM
+  region: "your_region" # HaNoi, HoChiMinh
 ```
 
 Create Secret in `kube-system` namespace

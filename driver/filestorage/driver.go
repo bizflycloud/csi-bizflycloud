@@ -1,6 +1,6 @@
 // This file is part of csi-bizflycloud
 //
-// Copyright (C) 2020  BizFly Cloud
+// Copyright (C) 2020  Bizfly Cloud
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ type DriverOpts struct {
 	CSIClientBuilder csiclient.Builder
 }
 
-// Driver implements the CSI file storage driver for BizFly Cloud.
+// Driver implements the CSI file storage driver for Bizfly Cloud.
 type Driver struct {
 	name       string
 	version    string

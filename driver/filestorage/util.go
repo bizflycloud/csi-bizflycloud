@@ -1,6 +1,6 @@
 // This file is part of csi-bizflycloud
 //
-// Copyright (C) 2020  BizFly Cloud
+// Copyright (C) 2020  Bizfly Cloud
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ func fmtGrpcConnError(fwdEndpoint string, err error) string {
 	return fmt.Sprintf("connecting to fwd plugin at %s failed: %v", fwdEndpoint, err)
 }
 
-// parseExportLocation splits a Manila/BizFly NFS export location
+// parseExportLocation splits a Manila/Bizfly NFS export location
 // (e.g., "10.0.0.5:/shares/share-xxx") into server and share path.
 func parseExportLocation(exportLocation string) (server, share string, err error) {
 	parts := strings.SplitN(exportLocation, ":", 2)

@@ -20,7 +20,7 @@ jobs:
           echo $RELEASE_VERSION
           echo ${{ steps.vars.outputs.tag }}
       - name: Publish to Registry
-        uses: elgohr/Publish-Docker-Github-Action@master
+        uses: elgohr/Publish-Docker-Github-Action@v4
         with:
           registry: cr-hn-1.bizflycloud.vn
           name: cr-hn-1.bizflycloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud
@@ -43,7 +43,7 @@ jobs:
           echo $RELEASE_VERSION
           echo ${{ steps.vars.outputs.tag }}
       - name: Publish to Registry
-        uses: elgohr/Publish-Docker-Github-Action@master
+        uses: elgohr/Publish-Docker-Github-Action@v4
         with:
           registry: cr-hn-1.bizflycloud.vn
           name: cr-hn-1.bizflycloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-fs-bizflycloud

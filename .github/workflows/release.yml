@@ -3,29 +3,51 @@ on:
   push:
     tags:
        - v*
-#on: [push, pull_request]
-jobs:
 
-  docker:
-    name: Release on Docker hub
+jobs:
+  docker-block-storage:
+    name: Release csi-bizflycloud (Block Storage)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Set output
         id: vars
-        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
       - name: Check output
         env:
           RELEASE_VERSION: ${{ steps.vars.outputs.tag }}
         run: |
           echo $RELEASE_VERSION
           echo ${{ steps.vars.outputs.tag }}
-      - uses: actions/checkout@v1
       - name: Publish to Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          registry: cr-hn-1.vccloud.vn
-          name: cr-hn-1.vccloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud
+          registry: cr-hn-1.bizflycloud.vn
+          name: cr-hn-1.bizflycloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-bizflycloud
+          username: ${{ secrets.USER_CLOUD }}
+          password: ${{ secrets.PASS }}
+          tags: "latest,${{ steps.vars.outputs.tag }}"
+
+  docker-file-storage:
+    name: Release csi-fs-bizflycloud (File Storage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set output
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      - name: Check output
+        env:
+          RELEASE_VERSION: ${{ steps.vars.outputs.tag }}
+        run: |
+          echo $RELEASE_VERSION
+          echo ${{ steps.vars.outputs.tag }}
+      - name: Publish to Registry
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          registry: cr-hn-1.bizflycloud.vn
+          name: cr-hn-1.bizflycloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-fs-bizflycloud
+          dockerfile: Dockerfile.fs-bizflycloud
           username: ${{ secrets.USER_CLOUD }}
           password: ${{ secrets.PASS }}
           tags: "latest,${{ steps.vars.outputs.tag }}"

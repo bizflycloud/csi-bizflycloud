@@ -55,7 +55,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: cr-hn-1.bizflycloud.vn/cecd854937c8421b81d1d73789acad52/csi-fs-bizflycloud:v0.2.0
+          image: cr-hn-1.bizflycloud.vn/31ff9581861a4d0ea4df5e7dda0f665d/csi-fs-bizflycloud:v0.2.0
           imagePullPolicy: "Always"
           args:
             - /bin/csi-fs-bizflycloud

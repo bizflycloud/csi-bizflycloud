@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fs-test-deployment
+  labels:
+    app: fs-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fs-test
+  template:
+    metadata:
+      labels:
+        app: fs-test
+    spec:
+      containers:
+      - name: test
+        image: busybox
+        command:
+          - "sh"
+          - "-c"
+          - |
+            while true; do
+              date >> /mnt/data/shared.txt
+              echo "Pod $HOSTNAME wrote to file"
+              sleep 10
+            done
+        volumeMounts:
+        - name: shared-data
+          mountPath: /mnt/data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: my-shared-storage

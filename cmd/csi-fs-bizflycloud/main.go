@@ -24,29 +24,34 @@ import (
 	"os"
 	"time"
 
-	"github.com/bizflycloud/csi-bizflycloud/driver/blockstorage"
+	"github.com/bizflycloud/csi-bizflycloud/driver/filestorage"
+	"github.com/bizflycloud/csi-bizflycloud/driver/filestorage/csiclient"
 	"github.com/bizflycloud/gobizfly"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/cloud-provider-openstack/pkg/util/metadata"
-	"k8s.io/cloud-provider-openstack/pkg/util/mount"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
 )
 
 var (
-	endpoint       string
-	nodeID         string
-	authMethod     string
-	username       string
-	password       string
-	tenantID       string
-	appCredID      string
-	appCredSecret  string
-	cluster        string
-	apiUrl         string
-	region         string
-	isControlPlane bool
+	endpoint      string
+	fwdEndpoint   string
+	driverName    string
+	protoSelector string
+	clusterID     string
+
+	authMethod    string
+	username      string
+	password      string
+	tenantID      string
+	appCredID     string
+	appCredSecret string
+	apiUrl        string
+	region        string
+
+	provideControllerService bool
+	provideNodeService       bool
 )
 
 func init() {
@@ -54,22 +59,17 @@ func init() {
 }
 
 func main() {
-
 	flag.CommandLine.Parse([]string{})
 
 	cmd := &cobra.Command{
-		Use:   "BizflyCloudVolumeDriver",
-		Short: "CSI based Bizfly Cloud Volume driver",
+		Use:   "csi-fs-bizflycloud",
+		Short: "CSI File Storage driver for Bizfly Cloud",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Glog requires this otherwise it complains.
 			flag.CommandLine.Parse(nil)
 
-			// This is a temporary hack to enable proper logging until upstream dependencies
-			// are migrated to fully utilize klog instead of glog.
 			klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
 			klog.InitFlags(klogFlags)
 
-			// Sync the glog and klog flags.
 			cmd.Flags().VisitAll(func(f1 *pflag.Flag) {
 				f2 := klogFlags.Lookup(f1.Name)
 				if f2 != nil {
@@ -85,31 +85,25 @@ func main() {
 
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
-	cmd.PersistentFlags().StringVar(&nodeID, "nodeid", "", "node id")
-	cmd.PersistentFlags().MarkDeprecated("nodeid", "This flag would be removed in future. Currently, the value is ignored by the driver")
+	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	cmd.PersistentFlags().StringVar(&fwdEndpoint, "fwdendpoint", "", "CSI Node Plugin endpoint to forward Node Service RPCs to (e.g., NFS CSI driver)")
+	cmd.MarkPersistentFlagRequired("fwdendpoint")
 
-	cmd.PersistentFlags().StringVar(&endpoint, "endpoint", "", "CSI endpoint")
-	cmd.MarkPersistentFlagRequired("endpoint")
-
-	cmd.PersistentFlags().BoolVar(&isControlPlane, "is_control_plane", false, "Is Control Plane node")
+	cmd.PersistentFlags().StringVar(&driverName, "drivername", "fs.csi.bizflycloud.vn", "Name of the driver")
+	cmd.PersistentFlags().StringVar(&protoSelector, "share-protocol-selector", "NFS", "Share protocol to use (default: NFS)")
+	cmd.PersistentFlags().StringVar(&clusterID, "cluster", "", "The identifier of the cluster")
 
 	cmd.PersistentFlags().StringVar(&authMethod, "auth_method", "password", "Authentication method")
-
 	cmd.PersistentFlags().StringVar(&username, "username", "", "Bizfly Cloud username")
-
 	cmd.PersistentFlags().StringVar(&password, "password", "", "Bizfly Cloud password")
-
 	cmd.PersistentFlags().StringVar(&appCredID, "application_credential_id", "", "Bizfly Cloud Application Credential ID")
-
 	cmd.PersistentFlags().StringVar(&appCredSecret, "application_credential_secret", "", "Bizfly Cloud Application Credential Secret")
-
 	cmd.PersistentFlags().StringVar(&tenantID, "tenant_id", "", "Bizfly Cloud Tenant ID")
-
 	cmd.PersistentFlags().StringVar(&apiUrl, "api_url", "https://manage.bizflycloud.vn", "Bizfly Cloud API URL")
+	cmd.PersistentFlags().StringVar(&region, "region", "HaNoi", "Bizfly Cloud Region Name (HaNoi, HoChiMinh)")
 
-	cmd.PersistentFlags().StringVar(&cluster, "cluster", "", "The identifier of the cluster that the plugin is running in.")
-
-	cmd.PersistentFlags().StringVar(&region, "region", "HaNoi", "Bizfly Cloud Region Name. Available: HaNoi and HoChiMinh")
+	cmd.PersistentFlags().BoolVar(&provideControllerService, "provide-controller-service", true, "Provide the controller service (default: true)")
+	cmd.PersistentFlags().BoolVar(&provideNodeService, "provide-node-service", true, "Provide the node service (default: true)")
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
@@ -123,19 +117,32 @@ func main() {
 }
 
 func handle() {
+	csiClientBuilder := &csiclient.ClientBuilder{}
 
-	d := blockstorage.NewDriver(endpoint, cluster)
+	opts := &filestorage.DriverOpts{
+		DriverName:        driverName,
+		ShareProto:        protoSelector,
+		ClusterID:         clusterID,
+		ServerCSIEndpoint: endpoint,
+		FwdCSIEndpoint:    fwdEndpoint,
+		CSIClientBuilder:  csiClientBuilder,
+	}
 
-	// Intiliaze mount
-	iMount := mount.GetMountProvider()
-	//Intiliaze Metadatda
-	metadataProvider := metadata.GetMetadataProvider("metadataService")
-	if isControlPlane {
-		client, err := gobizfly.NewClient(gobizfly.WithAPIURL(apiUrl), gobizfly.WithProjectID(tenantID), gobizfly.WithRegionName(region))
+	d, err := filestorage.NewDriver(opts)
+	if err != nil {
+		klog.Fatalf("Driver initialization failed: %v", err)
+	}
+
+	if provideControllerService {
+		client, err := gobizfly.NewClient(
+			gobizfly.WithAPIURL(apiUrl),
+			gobizfly.WithProjectID(tenantID),
+			gobizfly.WithRegionName(region),
+		)
 		if err != nil {
-			klog.Errorf("Failed to create Bizfly Cloud client: %v", err)
-			return
+			klog.Fatalf("Failed to create Bizfly Cloud client: %v", err)
 		}
+
 		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancelFunc()
 
@@ -144,19 +151,26 @@ func handle() {
 			Username:      username,
 			Password:      password,
 			AppCredID:     appCredID,
-			AppCredSecret: appCredSecret})
-
+			AppCredSecret: appCredSecret,
+		})
 		if err != nil {
-			klog.Errorf("Failed to authenticate with Bizfly Cloud: %v", err)
-			return
+			klog.Fatalf("Failed to authenticate with Bizfly Cloud: %v", err)
 		}
 
 		client.SetKeystoneToken(tok)
-		d.SetupControlDriver(client, iMount, metadataProvider)
-		d.Run()
-	} else {
-		d.SetupNodeDriver(iMount, metadataProvider)
-		d.Run()
+
+		if err := d.SetupControllerService(client); err != nil {
+			klog.Fatalf("Controller service initialization failed: %v", err)
+		}
 	}
 
+	if provideNodeService {
+		metadataProvider := metadata.GetMetadataProvider("metadataService")
+
+		if err := d.SetupNodeService(metadataProvider); err != nil {
+			klog.Fatalf("Node service initialization failed: %v", err)
+		}
+	}
+
+	d.Run()
 }

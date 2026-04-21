@@ -2,14 +2,16 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-FROM golang:1.17-stretch  AS build-env
+FROM golang:1.24-bookworm AS build-env
 WORKDIR /app
-ADD . /app
-RUN cd /app && GO111MODULE=on GOARCH=amd64 go build -o csi-bizflycloud cmd/csi-bizflycloud/main.go
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . /app
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o csi-bizflycloud cmd/csi-bizflycloud/main.go
 
-FROM amd64/debian:stable
+FROM --platform=linux/amd64 debian:bookworm-slim
 
-RUN apt update && apt install ca-certificates e2fsprogs mount xfsprogs udev -y
+RUN apt-get update && apt-get install -y ca-certificates e2fsprogs mount xfsprogs udev && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build-env /app/csi-bizflycloud /bin/
 

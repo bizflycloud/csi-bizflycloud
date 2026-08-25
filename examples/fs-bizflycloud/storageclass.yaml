@@ -4,20 +4,27 @@ metadata:
   name: bizflycloud-fs
 provisioner: fs.csi.bizflycloud.vn
 parameters:
-  # Availability zone
-  zone: HN1
+  # Availability zone of your VPC / K8s Cluster (e.g., HN1, HCM1)
+  zone: "HN1"
+
   # Share protocol (default: NFS)
   share_protocol: NFS
-  # Network ID for the share (required)
-  network_id: "79531ebb-dfb3-478b-bddc-244cb2769a98"
-  # Subnet ID for the share (optional)
-  subnet_id: "9e031e70-52ca-4345-bf6a-faa2cccb7ca8"
-  # Share type (optional)
-  share_type: "share-type-1"
-  # IP access rule - restrict to VPC CIDR for security
-  # Default: 0.0.0.0/0 (allow all)
-  # Recommended: Use your VPC CIDR (e.g., 10.0.0.0/16)
+
+  # Required: ID of your VPC Network in Bizfly Cloud Dashboard
+  network_id: "<your_vpc_network_id>"
+
+  # Optional: ID of a specific Subnet in your VPC Network
+  # subnet_id: "<your_vpc_subnet_id>"
+
+  # Optional: Share type (default: share-type-1)
+  # share_type: "share-type-1"
+
+  # IP access rule: CIDR allowed to mount NFS shares
+  # Recommended: Set to your VPC Network CIDR (e.g., 10.0.0.0/16 or 172.16.0.0/16)
+  # Default: 0.0.0.0/0
   nfs-shareClient: "0.0.0.0/0"
+
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
+

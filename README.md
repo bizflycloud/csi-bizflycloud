@@ -175,7 +175,7 @@ Verify shared write across pods:
 kubectl exec -it deployment/shared-test-app -- cat /mnt/shared/log.txt
 ```
 
-👉 See full guide: **[docs/install-filestorage.md](docs/install-filestorage.md)**.
+👉 See full guide: **[docs/install-filestorage.md](docs/install-filestorage.md)** | **[docs/huong-dan-cai-dat-filestorage.md (Tiếng Việt)](docs/huong-dan-cai-dat-filestorage.md)**.
 
 ---
 
@@ -273,8 +273,9 @@ Snapshots can be created and restored through Kubernetes `VolumeSnapshot` object
 │   ├── fs-bizflycloud/       # File Storage StorageClass, PVC & Deployment examples
 │   └── ...                   # Block Storage examples
 └── docs/
-    ├── install.md            # CSI Drivers installation overview
-    └── install-filestorage.md# Dedicated File Storage guide
+    ├── install.md                      # CSI Drivers installation overview
+    ├── install-filestorage.md          # Dedicated File Storage guide (English)
+    └── huong-dan-cai-dat-filestorage.md# Hướng dẫn chi tiết File Storage (Tiếng Việt)
 ```
 
 ---

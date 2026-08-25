@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-shared-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: bizflycloud-fs
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-rwx-test
+  namespace: default
+  labels:
+    app: nginx-rwx-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-rwx-test
+  template:
+    metadata:
+      labels:
+        app: nginx-rwx-test
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - nginx-rwx-test
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: shared-html
+          mountPath: /usr/share/nginx/html
+      - name: writer
+        image: busybox
+        command:
+          - "sh"
+          - "-c"
+          - |
+            while true; do
+              echo "<h1>Bizfly FileStorage RWX Demo</h1><p>[$(date)] Pod: $HOSTNAME on node $NODE_NAME is writing to shared storage.</p>" >> /usr/share/nginx/html/index.html
+              echo "[$(date)] Pod: $HOSTNAME ($NODE_NAME)" >> /usr/share/nginx/html/access.log
+              sleep 5
+            done
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: shared-html
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: shared-html
+        persistentVolumeClaim:
+          claimName: nginx-shared-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-rwx-service
+  namespace: default
+spec:
+  selector:
+    app: nginx-rwx-test
+  ports:
+  - port: 80
+    targetPort: 80

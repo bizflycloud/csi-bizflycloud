@@ -21,6 +21,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -138,6 +139,8 @@ func handle() {
 			gobizfly.WithAPIURL(apiUrl),
 			gobizfly.WithProjectID(tenantID),
 			gobizfly.WithRegionName(region),
+			// The default http.Client has no timeout: a hung API call would block the CSI controller
+			gobizfly.WithHTTPClient(&http.Client{Timeout: 60 * time.Second}),
 		)
 		if err != nil {
 			klog.Fatalf("Failed to create Bizfly Cloud client: %v", err)

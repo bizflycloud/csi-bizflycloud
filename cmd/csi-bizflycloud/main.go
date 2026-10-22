@@ -21,6 +21,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -131,7 +132,13 @@ func handle() {
 	//Intiliaze Metadatda
 	metadataProvider := metadata.GetMetadataProvider("metadataService")
 	if isControlPlane {
-		client, err := gobizfly.NewClient(gobizfly.WithAPIURL(apiUrl), gobizfly.WithProjectID(tenantID), gobizfly.WithRegionName(region))
+		client, err := gobizfly.NewClient(
+			gobizfly.WithAPIURL(apiUrl),
+			gobizfly.WithProjectID(tenantID),
+			gobizfly.WithRegionName(region),
+			// The default http.Client has no timeout: a hung API call would block the CSI controller
+			gobizfly.WithHTTPClient(&http.Client{Timeout: 60 * time.Second}),
+		)
 		if err != nil {
 			klog.Errorf("Failed to create Bizfly Cloud client: %v", err)
 			return

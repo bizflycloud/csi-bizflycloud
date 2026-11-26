@@ -1,29 +1,28 @@
 module github.com/bizflycloud/csi-bizflycloud
 
-go 1.24
+go 1.26.0
 
-toolchain go1.24.1
+toolchain go1.26.11
 
 require (
 	github.com/bizflycloud/gobizfly v1.1.32
 	github.com/container-storage-interface/spec v1.5.0
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/golang/protobuf v1.5.4
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
-	google.golang.org/grpc v1.40.0
-	google.golang.org/protobuf v1.28.0 // indirect
+	golang.org/x/net v0.63.0
+	golang.org/x/sys v0.50.0 // indirect
+	google.golang.org/grpc v1.85.0
+	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apimachinery v0.24.0
 	k8s.io/cloud-provider-openstack v1.21.0
 	k8s.io/component-base v0.24.0
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.70.1 // indirect
-	k8s.io/mount-utils v0.24.0
+	k8s.io/mount-utils v0.24.17
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 )
 
@@ -37,10 +36,10 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261118221215-c8830f628b3f // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
@@ -72,7 +71,7 @@ replace (
 	k8s.io/kubelet => k8s.io/kubelet v0.24.0
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.24.0
 	k8s.io/metrics => k8s.io/metrics v0.24.0
-	k8s.io/mount-utils => k8s.io/mount-utils v0.24.0
+	k8s.io/mount-utils => k8s.io/mount-utils v0.24.17
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.0
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.0
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.24.0

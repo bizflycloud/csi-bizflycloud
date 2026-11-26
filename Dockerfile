@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-FROM golang:1.24-bookworm AS build-env
+FROM golang:1.26.11-bookworm AS build-env
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
